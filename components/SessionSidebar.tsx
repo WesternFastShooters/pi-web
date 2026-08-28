@@ -883,15 +883,21 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
     onSelectSession(s);
   }, [onSelectSession]);
 
-  const handleNewSession = useCallback(() => {
-    if (!selectedCwd) return;
+  const handleNewSessionForCwd = useCallback((cwd: string | null) => {
+    if (!cwd) return;
     // Generate a temporary UUID client-side — no backend call needed.
     // Pi will be spawned lazily when the user sends the first message.
     const tempId = typeof crypto.randomUUID === "function"
       ? crypto.randomUUID()
       : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}-${Math.random().toString(36).slice(2)}`;
-    onNewSession?.(tempId, selectedCwd);
-  }, [selectedCwd, onNewSession]);
+    setSelectedCwd(cwd);
+    setDropdownOpen(false);
+    onNewSession?.(tempId, cwd);
+  }, [onNewSession]);
+
+  const handleNewSession = useCallback(() => {
+    handleNewSessionForCwd(selectedCwd);
+  }, [handleNewSessionForCwd, selectedCwd]);
 
   const recentProjects = getRecentProjects(allSessions);
   const showProjectFilter = recentProjects.length > 8;
@@ -1096,15 +1102,44 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
           </button>
         </nav>
 
-        <div className="codex-sidebar-section-label">{t("sidebar.projects")}</div>
+        <div className="codex-sidebar-section-label" style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <span>{t("sidebar.projects")}</span>
+          <button
+            type="button"
+            onClick={handleCustomPathClick}
+            title={t("sidebar.addProject")}
+            aria-label={t("sidebar.addProject")}
+            style={{
+              width: 24,
+              height: 24,
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              margin: "-4px -4px -4px 0",
+              padding: 0,
+              border: 0,
+              borderRadius: 5,
+              background: "transparent",
+              color: "var(--text-muted)",
+              cursor: "pointer",
+              fontSize: 18,
+              lineHeight: 1,
+            }}
+            onMouseEnter={(event) => { event.currentTarget.style.background = "var(--bg-hover)"; }}
+            onMouseLeave={(event) => { event.currentTarget.style.background = "transparent"; }}
+          >
+            ＋
+          </button>
+        </div>
 
         {/* CWD picker */}
-        <div ref={dropdownRef} className="codex-project-picker" style={{ position: "relative" }}>
+        <div ref={dropdownRef} className="codex-project-picker" style={{ position: "relative", display: "flex", alignItems: "stretch", gap: 4 }}>
           <button
             onClick={() => setDropdownOpen((v) => !v)}
             title={selectedProject?.root ?? selectedCwd ?? ""}
             style={{
-              width: "100%",
+              flex: 1,
+              minWidth: 0,
               display: "flex",
               alignItems: "center",
               padding: "6px 10px",
@@ -1162,6 +1197,30 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
             )}
           </button>
 
+          <button
+            type="button"
+            onClick={(event) => {
+              event.stopPropagation();
+              handleNewSessionForCwd(selectedProject?.root ?? selectedCwd);
+            }}
+            disabled={!selectedCwd}
+            title={selectedCwd ? t("sidebar.newSessionTitle", { path: selectedProject?.root ?? selectedCwd }) : t("sidebar.selectProject")}
+            aria-label={t("sidebar.newSession")}
+            style={{
+              width: 32,
+              flexShrink: 0,
+              border: "1px solid var(--border)",
+              borderRadius: 7,
+              background: "var(--bg-hover)",
+              color: selectedCwd ? "var(--text-muted)" : "var(--text-dim)",
+              cursor: selectedCwd ? "pointer" : "not-allowed",
+              fontSize: 18,
+              lineHeight: 1,
+            }}
+          >
+            ＋
+          </button>
+
           <AnimatedDropdown
             open={dropdownOpen}
             style={{
@@ -1207,8 +1266,8 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
               )}
               <div style={{ maxHeight: "min(50vh, 380px)", overflowY: "auto" }}>
                 {visibleProjects.map((project) => (
+                  <div key={project.key} style={{ display: "flex", alignItems: "stretch", borderBottom: "1px solid var(--border)" }}>
                   <button
-                    key={project.key}
                     onClick={() => {
                       setSelectedCwd(project.root);
                       setProjectFilter("");
@@ -1220,11 +1279,12 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
                       display: "flex",
                       alignItems: "center",
                       gap: 7,
-                      width: "100%",
+                      flex: 1,
+                      minWidth: 0,
                       padding: "8px 10px",
                       background: "var(--bg)",
                       border: "none",
-                      borderBottom: "1px solid var(--border)",
+                      borderBottom: "none",
                       color: project.key === selectedProject?.key ? "var(--text)" : "var(--text-muted)",
                       cursor: "pointer",
                       textAlign: "left",
@@ -1245,6 +1305,27 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
                     <PathLabel text={displayCwd(project.root, homeDir)} style={{ flex: 1 }} />
                     {showProjectActivity(projectActivity.get(project.key), t)}
                   </button>
+                  <button
+                    type="button"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      handleNewSessionForCwd(project.root);
+                    }}
+                    title={t("sidebar.newSessionTitle", { path: project.root })}
+                    aria-label={t("sidebar.newSessionInProject", { path: project.root })}
+                    style={{
+                      width: 32,
+                      flexShrink: 0,
+                      border: 0,
+                      background: "var(--bg)",
+                      color: "var(--text-muted)",
+                      cursor: "pointer",
+                      fontSize: 16,
+                    }}
+                  >
+                    ＋
+                  </button>
+                  </div>
                 ))}
                 {visibleProjects.length === 0 && projectFilter.trim() && (
                    <div style={{ padding: "8px 10px", fontSize: 11, color: "var(--text-dim)" }}>{t("sidebar.noMatchingProjects")}</div>

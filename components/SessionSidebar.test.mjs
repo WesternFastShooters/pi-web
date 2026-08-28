@@ -84,6 +84,14 @@ test("manual and lifecycle refreshes bypass the server session-list cache", () =
   assert.match(source, /loadSessions\(false, true\);[\s\S]*?onBackgroundTaskDone/);
 });
 
+test("project section exposes add-project and per-project new-session actions", () => {
+  assert.match(source, /aria-label=\{t\("sidebar\.addProject"\)\}/);
+  assert.match(source, /onClick=\{handleCustomPathClick\}/);
+  assert.match(source, /const handleNewSessionForCwd = useCallback/);
+  assert.match(source, /onClick=\{\(event\) => \{[\s\S]*?handleNewSessionForCwd\(project\.root\)/);
+  assert.match(source, /onClick=\{\(event\) => \{[\s\S]*?handleNewSessionForCwd\(selectedProject\?\.root \?\? selectedCwd\)/);
+});
+
 test("hides subagent rows and aggregates their state into the main session row", () => {
   assert.match(source, /const sessionFamilies = listSessionFamilies\(filteredSessions\)/);
   assert.match(source, /familySessions\.some\(\(session\) => session\.id === selectedSessionId\)/);
