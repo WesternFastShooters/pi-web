@@ -14,3 +14,10 @@ test("projects expose Codex-style layout, project actions, and drag assignment",
   assert.match(source, /onDropSession/);
   assert.match(source, /draggable/);
 });
+
+test("project and recent section headings expose working collapse controls", () => {
+  assert.match(source, /aria-expanded=\{projectsExpanded\}/);
+  assert.match(source, /aria-expanded=\{recentsExpanded\}/);
+  assert.match(source, /hidden=\{!projectsExpanded\}/);
+  assert.match(source, /hidden=\{!recentsExpanded\}/);
+});

@@ -20,6 +20,10 @@ function folderIcon(): ReactNode {
   return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 7h6l2 2h10v10H3Z"/><path d="M3 7V5h6l2 2"/></svg>;
 }
 
+function collapseChevron(expanded: boolean): ReactNode {
+  return <svg className="codex-project-collapse-chevron" data-expanded={expanded || undefined} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>;
+}
+
 function loadState(): ProjectSidebarState {
   if (typeof window === "undefined") return DEFAULT_PROJECT_SIDEBAR_STATE;
   try { return parseProjectSidebarState(window.localStorage.getItem(PROJECT_SIDEBAR_STORAGE_KEY)); }
@@ -67,6 +71,8 @@ export function ProjectSidebarTree(props: Props) {
   const [projectMenu, setProjectMenu] = useState<{ project: SidebarProject; x: number; y: number } | null>(null);
   const [hoveredProject, setHoveredProject] = useState<string | null>(null);
   const [dragTarget, setDragTarget] = useState<string | null>(null);
+  const [projectsExpanded, setProjectsExpanded] = useState(true);
+  const [recentsExpanded, setRecentsExpanded] = useState(true);
   const headerMenuRef = useRef<HTMLDivElement>(null);
 
   const updateState = useCallback((change: (current: ProjectSidebarState) => ProjectSidebarState) => {
@@ -187,7 +193,10 @@ export function ProjectSidebarTree(props: Props) {
 
   return <section className="codex-project-tree" aria-label={t("sidebar.projects")}>
     <div className="codex-project-tree-heading">
-      <span>{t("sidebar.projects")}</span>
+      <button className="codex-project-section-toggle" type="button" aria-expanded={projectsExpanded} aria-controls="codex-project-tree-content" onClick={() => setProjectsExpanded((expanded) => !expanded)}>
+        <span>{t("sidebar.projects")}</span>
+        {collapseChevron(projectsExpanded)}
+      </button>
       <div ref={headerMenuRef} className="codex-project-tree-heading-actions">
         <button type="button" onClick={() => setHeaderMenuOpen((open) => !open)} aria-label={t("sidebar.projectOptions")}>•••</button>
         <button type="button" onClick={() => { setProjectMenu(null); setHeaderMenuOpen(false); props.onAddProject(); }} aria-label={t("sidebar.addProject")}>＋</button>
@@ -201,40 +210,47 @@ export function ProjectSidebarTree(props: Props) {
       </div>
     </div>
 
-    {props.loading && <div className="codex-project-empty">{t("sidebar.loading")}</div>}
-    {props.error && <div className="codex-project-empty codex-project-error">{props.error}</div>}
-    {!props.loading && !props.error && state.layout === "projects" && projects.map((project) => {
-      const projectSessions = sortSessions(sessionsFor(project.key));
-      const active = props.selectedProjectKey === project.key;
-      return <div key={project.key} className="codex-project-group">
-        <div
-          className="codex-project-row"
-          data-active={active || undefined}
-          data-drop-target={dragTarget === project.key || undefined}
-          onMouseEnter={() => setHoveredProject(project.key)}
-          onMouseLeave={() => setHoveredProject(null)}
-          onClick={() => props.onSelectProject(project)}
-          onContextMenu={(event) => { event.preventDefault(); openProjectMenu(project, event.clientX, event.clientY); }}
-          onDragOver={(event) => { event.preventDefault(); event.dataTransfer.dropEffect = "move"; setDragTarget(project.key); }}
-          onDragLeave={() => setDragTarget(null)}
-          onDrop={(event) => onDropSession(project.key, event)}
-          title={project.root}
-        >
-          {folderIcon()}<span className="codex-project-name">{projectLabel(project)}</span>
-          <span className="codex-project-row-actions" data-visible={hoveredProject === project.key || undefined}>
-            <button type="button" onClick={(event) => { event.stopPropagation(); openProjectMenu(project, event.clientX, event.clientY); }} aria-label={t("sidebar.projectOptions")}>•••</button>
-            <button type="button" onClick={(event) => { event.stopPropagation(); props.onNewSession(project.root); }} aria-label={t("sidebar.newSessionInProject", { path: project.root })}>
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4Z"/></svg>
-            </button>
-          </span>
-        </div>
-        <div className="codex-project-sessions">{renderSessions(projectSessions)}</div>
-      </div>;
-    })}
-    {!props.loading && !props.error && state.layout === "list" && <div className="codex-project-flat-list">{renderSessions(sortSessions(props.sessions))}</div>}
+    <div id="codex-project-tree-content" hidden={!projectsExpanded}>
+      {props.loading && <div className="codex-project-empty">{t("sidebar.loading")}</div>}
+      {props.error && <div className="codex-project-empty codex-project-error">{props.error}</div>}
+      {!props.loading && !props.error && state.layout === "projects" && projects.map((project) => {
+        const projectSessions = sortSessions(sessionsFor(project.key));
+        const active = props.selectedProjectKey === project.key;
+        return <div key={project.key} className="codex-project-group">
+          <div
+            className="codex-project-row"
+            data-active={active || undefined}
+            data-drop-target={dragTarget === project.key || undefined}
+            onMouseEnter={() => setHoveredProject(project.key)}
+            onMouseLeave={() => setHoveredProject(null)}
+            onClick={() => props.onSelectProject(project)}
+            onContextMenu={(event) => { event.preventDefault(); openProjectMenu(project, event.clientX, event.clientY); }}
+            onDragOver={(event) => { event.preventDefault(); event.dataTransfer.dropEffect = "move"; setDragTarget(project.key); }}
+            onDragLeave={() => setDragTarget(null)}
+            onDrop={(event) => onDropSession(project.key, event)}
+            title={project.root}
+          >
+            {folderIcon()}<span className="codex-project-name">{projectLabel(project)}</span>
+            <span className="codex-project-row-actions" data-visible={hoveredProject === project.key || undefined}>
+              <button type="button" onClick={(event) => { event.stopPropagation(); openProjectMenu(project, event.clientX, event.clientY); }} aria-label={t("sidebar.projectOptions")}>•••</button>
+              <button type="button" onClick={(event) => { event.stopPropagation(); props.onNewSession(project.root); }} aria-label={t("sidebar.newSessionInProject", { path: project.root })}>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4Z"/></svg>
+              </button>
+            </span>
+          </div>
+          <div className="codex-project-sessions">{renderSessions(projectSessions)}</div>
+        </div>;
+      })}
+      {!props.loading && !props.error && state.layout === "list" && <div className="codex-project-flat-list">{renderSessions(sortSessions(props.sessions))}</div>}
+    </div>
     {!props.loading && !props.error && state.layout === "projects" && props.sessions.length > 0 && <>
-      <div className="codex-project-recents-label">{t("sidebar.recent")}</div>
-      <div className="codex-project-flat-list">{renderSessions(sortSessions(props.sessions))}</div>
+      <div className="codex-project-recents-label">
+        <button className="codex-project-section-toggle" type="button" aria-expanded={recentsExpanded} aria-controls="codex-project-recents-content" onClick={() => setRecentsExpanded((expanded) => !expanded)}>
+          <span>{t("sidebar.recent")}</span>
+          {collapseChevron(recentsExpanded)}
+        </button>
+      </div>
+      <div id="codex-project-recents-content" className="codex-project-flat-list" hidden={!recentsExpanded}>{renderSessions(sortSessions(props.sessions))}</div>
     </>}
 
     {projectMenu && createPortal(<div className="codex-project-menu codex-project-context-menu" role="menu" style={{ left: projectMenu.x, top: projectMenu.y }} onPointerDown={(event) => event.stopPropagation()}>

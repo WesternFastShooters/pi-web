@@ -1274,6 +1274,35 @@ pre, code {
   font-weight: 500;
 }
 
+.codex-project-section-toggle {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  gap: 5px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+}
+
+.codex-project-section-toggle:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--accent) 65%, transparent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+.codex-project-collapse-chevron {
+  flex: 0 0 auto;
+  transform: rotate(-90deg);
+  transition: transform 120ms ease;
+}
+
+.codex-project-collapse-chevron[data-expanded] {
+  transform: rotate(0deg);
+}
+
 .codex-project-tree-heading-actions {
   position: relative;
   display: flex;
