@@ -5,11 +5,10 @@ import test from "node:test";
 const source = await readFile(new URL("./SessionSidebar.tsx", import.meta.url), "utf8");
 const sessionItemSource = source.slice(source.indexOf("function SessionItem("));
 
-test("only Shift+click bypasses session deletion confirmation", () => {
-  assert.match(
-    sessionItemSource,
-    /const handleDeleteClick[\s\S]*?if \(e\.shiftKey\) \{\s*void performDelete\(\);\s*\} else \{\s*setConfirmDelete\(true\);/,
-  );
+test("does not render inline rename or delete buttons on session rows", () => {
+  assert.doesNotMatch(sessionItemSource, /title=\{t\("sidebar\.rename"\)\}/);
+  assert.doesNotMatch(sessionItemSource, /title=\{t\("sidebar\.deleteWithShiftClick"\)\}/);
+  assert.doesNotMatch(sessionItemSource, /Action buttons — shown on hover/);
 });
 
 test("does not register row-level session deletion shortcuts", () => {
@@ -66,19 +65,9 @@ test("formats session timestamps with the active locale", () => {
   assert.match(sessionItemSource, /formatRelativeTime\(session\.modified, locale\)/);
 });
 
-test("does not persist an unchanged fallback title ending in whitespace", () => {
-  assert.match(
-    sessionItemSource,
-    /const name = renameValue\.trim\(\);[\s\S]*?if \(renameValue === title \|\| name === \(session\.name \?\? ""\)\) return;/,
-  );
-});
-
-test("offers the downstream context-menu hook only on a normal session row", () => {
+test("keeps session management in the downstream context menu", () => {
   assert.match(sessionItemSource, /const handleContextMenu[\s\S]*?dispatchSessionRowContextMenu\(\{/);
-  assert.match(
-    sessionItemSource,
-    /onContextMenu=\{confirmDelete \|\| renaming \? undefined : handleContextMenu\}/,
-  );
+  assert.match(sessionItemSource, /onContextMenu=\{handleContextMenu\}/);
 });
 
 test("manual and lifecycle refreshes bypass the server session-list cache", () => {
@@ -87,11 +76,6 @@ test("manual and lifecycle refreshes bypass the server session-list cache", () =
   assert.match(source, /loadSessions\(isFirst, !isFirst\)/);
   assert.match(source, /onClick=\{\(\) => loadSessions\(false, true\)\}/);
   assert.match(source, /loadSessions\(false, true\);[\s\S]*?onBackgroundTaskDone/);
-});
-
-test("does not expose disk-backed actions for transient sessions", () => {
-  assert.match(sessionItemSource, /if \(session\.transient\) return;/);
-  assert.match(sessionItemSource, /\{hovered && !session\.transient && \(/);
 });
 
 test("hides subagent rows and aggregates their state into the main session row", () => {
