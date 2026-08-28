@@ -1,6 +1,7 @@
 "use client";
 import { registerAbortHandler } from "@/hooks/useKeyboardShortcuts";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import type { AgentMessage, AssistantContentBlock, AssistantMessage, BashExecutionMessage, BlockingExtensionUiRequest, CustomMessage, ExtensionUiRequest, SessionInfo, SessionTreeNode, ToolResultMessage, UserMessage } from "@/lib/types";
 import { normalizeCustomPanelLines } from "@/lib/ansi";
 import { asBracketedPaste, toTerminalKeyData } from "@/lib/terminal-input";
@@ -46,6 +47,7 @@ interface Props {
   onSessionStatsPanelOpen?: () => void;
   onContextUsageChange?: (usage: { percent: number | null; contextWindow: number; tokens: number | null } | null) => void;
   sideChatToggleKey?: number;
+  sideChatHost?: HTMLElement | null;
   onSideChatAvailabilityChange?: (available: boolean) => void;
   onSideChatOpenChange?: (open: boolean) => void;
   onOpenFile?: (filePath: string) => void;
@@ -265,7 +267,7 @@ function ProcessDetailsGroup({ messageCount, toolCallCount, defaultExpanded = fa
   );
 }
 
-export function ChatWindow({ session, sessionRunning, newSessionCwd, newSessionDraftKey, onAgentEnd, onAttentionNeeded, onSessionCreated, onSessionForked, modelsRefreshKey, chatInputRef, onBranchDataChange, onSystemPromptChange, onSystemToolsChange, onSystemInfoLoaderChange, onSessionStatsChange, onSessionStatsPanelOpen, onContextUsageChange, sideChatToggleKey = 0, onSideChatAvailabilityChange, onSideChatOpenChange, onOpenFile, onOpenSession, soundEnabled = true, onSoundToggle, playDoneSound = () => {}, unlockAudio, terminalOpen = false, onTerminalClose }: Props) {
+export function ChatWindow({ session, sessionRunning, newSessionCwd, newSessionDraftKey, onAgentEnd, onAttentionNeeded, onSessionCreated, onSessionForked, modelsRefreshKey, chatInputRef, onBranchDataChange, onSystemPromptChange, onSystemToolsChange, onSystemInfoLoaderChange, onSessionStatsChange, onSessionStatsPanelOpen, onContextUsageChange, sideChatToggleKey = 0, sideChatHost, onSideChatAvailabilityChange, onSideChatOpenChange, onOpenFile, onOpenSession, soundEnabled = true, onSoundToggle, playDoneSound = () => {}, unlockAudio, terminalOpen = false, onTerminalClose }: Props) {
   const { t } = useI18n();
   const isMobile = useIsMobile();
   const completionNotificationsEnabled = session?.relation?.kind !== "subagent";
@@ -682,9 +684,7 @@ export function ChatWindow({ session, sessionRunning, newSessionCwd, newSessionD
     <div
       className="codex-chat-window relative flex h-full min-w-0 flex-col overflow-hidden"
       style={{
-        paddingRight: btwSideChatOpen && !isMobile ? 440 : undefined,
         paddingBottom: "env(safe-area-inset-bottom)",
-        transition: "padding-right 160ms ease",
       }}
       onDragEnter={handleDragEnter}
       onDragOver={handleDragOver}
@@ -731,12 +731,22 @@ export function ChatWindow({ session, sessionRunning, newSessionCwd, newSessionD
       )}
 
       {customUiToRender && !btwSideChatHidden && (
-        <ExtensionCustomPanel
-          request={customUiToRender}
-          onInput={sendExtensionCustomInput}
-          sideDock={isBtwCustomRequest(customUiToRender)}
-          onDockClose={() => setBtwSideChatExpanded(false)}
-        />
+        isBtwCustomRequest(customUiToRender) ? (
+          sideChatHost ? createPortal(
+            <ExtensionCustomPanel
+              request={customUiToRender}
+              onInput={sendExtensionCustomInput}
+              sideDock
+              onDockClose={() => setBtwSideChatExpanded(false)}
+            />,
+            sideChatHost,
+          ) : null
+        ) : (
+          <ExtensionCustomPanel
+            request={customUiToRender}
+            onInput={sendExtensionCustomInput}
+          />
+        )
       )}
 
       <div
@@ -1441,23 +1451,25 @@ function ExtensionCustomPanel({
             pointerEvents: "none",
           }}
         />
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "10px 12px", borderBottom: "1px solid var(--border)" }}>
-           <div style={{ color: "var(--text)", fontSize: 13, fontWeight: 650 }}>{t(sideDock ? "chat.sideChat" : "chat.extensionPanel")}</div>
-          <button
-            onClick={() => sideDock ? onDockClose?.() : onInput(request, "\x03")}
-            style={{
-              padding: "5px 9px",
-              borderRadius: 6,
-              border: "1px solid var(--border)",
-              background: "var(--bg-panel)",
-              color: "var(--text-muted)",
-              cursor: "pointer",
-              fontSize: 12,
-            }}
-          >
-             {t("chat.close")}
-          </button>
-        </div>
+        {!sideDock ? (
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "10px 12px", borderBottom: "1px solid var(--border)" }}>
+            <div style={{ color: "var(--text)", fontSize: 13, fontWeight: 650 }}>{t("chat.extensionPanel")}</div>
+            <button
+              onClick={() => onInput(request, "\x03")}
+              style={{
+                padding: "5px 9px",
+                borderRadius: 6,
+                border: "1px solid var(--border)",
+                background: "var(--bg-panel)",
+                color: "var(--text-muted)",
+                cursor: "pointer",
+                fontSize: 12,
+              }}
+            >
+              {t("chat.close")}
+            </button>
+          </div>
+        ) : null}
         <pre
           style={{
             margin: 0,

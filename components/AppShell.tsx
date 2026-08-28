@@ -66,6 +66,7 @@ type AutoNameStatus =
 const TOP_BAR_ICON_BUTTON_SIZE = 36;
 const LANGUAGE_MENU_WIDTH = 176;
 const AGENT_PANEL_WIDTH = 420;
+const SIDE_CHAT_TAB_ID = "side-chat";
 
 export function AppShell() {
   const router = useRouter();
@@ -140,6 +141,8 @@ export function AppShell() {
   const [rightPanelOpen, setRightPanelOpen] = useState(false);
   const [summaryOpen, setSummaryOpen] = useState(false);
   const [sideChatAvailable, setSideChatAvailable] = useState(false);
+  const [sideChatOpen, setSideChatOpen] = useState(false);
+  const [sideChatHost, setSideChatHost] = useState<HTMLDivElement | null>(null);
   const [sideChatToggleKey, setSideChatToggleKey] = useState(0);
   const [terminalOpen, setTerminalOpen] = useState(false);
   const [mobileToolbarMoreOpen, setMobileToolbarMoreOpen] = useState(false);
@@ -936,6 +939,27 @@ export function AppShell() {
     });
   }, [fileTabs]);
 
+  const handleSideChatOpenChange = useCallback((open: boolean) => {
+    setSideChatOpen(open);
+    if (open) {
+      setActiveFileTabId(SIDE_CHAT_TAB_ID);
+      setRightPanelOpen(true);
+      return;
+    }
+    setActiveFileTabId((current) => (
+      current === SIDE_CHAT_TAB_ID ? fileTabs[fileTabs.length - 1]?.id ?? null : current
+    ));
+  }, [fileTabs]);
+
+  const handleCloseRightPanelTab = useCallback((tabId: string) => {
+    if (tabId === SIDE_CHAT_TAB_ID) {
+      setActiveFileTabId(fileTabs[fileTabs.length - 1]?.id ?? null);
+      setSideChatToggleKey((key) => key + 1);
+      return;
+    }
+    handleCloseFileTab(tabId);
+  }, [fileTabs, handleCloseFileTab]);
+
   const handleViewFullHistory = useCallback(() => {
     if (!selectedSession) return;
     window.open(
@@ -1004,6 +1028,16 @@ export function AppShell() {
   }, [projectTrustBusy, projectTrustCwd]);
 
   const activeFileTab = fileTabs.find((tab) => tab.id === activeFileTabId) ?? null;
+  const rightPanelTabs = useMemo<Tab[]>(() => (
+    sideChatOpen
+      ? [...fileTabs, {
+          id: SIDE_CHAT_TAB_ID,
+          label: translate("chat.sideChat"),
+          filePath: "",
+          kind: "side-chat",
+        }]
+      : fileTabs
+  ), [fileTabs, sideChatOpen, translate]);
   const activeCwdName = activeCwd ? getFileName(activeCwd) || activeCwd : null;
   const windowTitle = activeCwdName ? `${activeCwdName} - Pi` : "Pi";
 
@@ -1206,8 +1240,10 @@ export function AppShell() {
 
   const handleSideChatLaunch = () => {
     if (!sideChatAvailable) return;
+    setActiveFileTabId(SIDE_CHAT_TAB_ID);
+    setRightPanelOpen(true);
+    if (sideChatOpen) return;
     setSideChatToggleKey((key) => key + 1);
-    setRightPanelOpen(false);
   };
 
   const renderChatToolbarActions = (mobile: boolean) => {
@@ -2348,7 +2384,9 @@ export function AppShell() {
               onSessionStatsPanelOpen={openSessionStatsPanel}
               onContextUsageChange={handleContextUsageChange}
               sideChatToggleKey={sideChatToggleKey}
+              sideChatHost={sideChatHost}
               onSideChatAvailabilityChange={setSideChatAvailable}
+              onSideChatOpenChange={handleSideChatOpenChange}
               onOpenFile={handleOpenLinkedFile}
               onOpenSession={handleOpenSession}
               soundEnabled={soundEnabled}
@@ -2467,7 +2505,7 @@ export function AppShell() {
         } as React.CSSProperties}
       >
         {/* Right panel tab bar */}
-        {fileTabs.length > 0 ? <div className="codex-detail-header" style={{
+        {rightPanelTabs.length > 0 ? <div className="codex-detail-header" style={{
           display: "flex",
           alignItems: "center",
           flexShrink: 0,
@@ -2476,13 +2514,22 @@ export function AppShell() {
           background: "var(--bg-panel)",
           borderBottom: "1px solid var(--border)",
         }}>
-          <div style={{ flex: 1, overflow: "hidden" }}>
+          <div style={{ display: "flex", flex: 1, minWidth: 0, overflow: "hidden" }}>
             <TabBar
-              tabs={fileTabs}
+              tabs={rightPanelTabs}
               activeTabId={activeFileTabId ?? ""}
               onSelectTab={setActiveFileTabId}
-              onCloseTab={handleCloseFileTab}
+              onCloseTab={handleCloseRightPanelTab}
             />
+            <button
+              type="button"
+              onClick={() => setActiveFileTabId(null)}
+              title={translate("sidebar.new")}
+              aria-label={translate("sidebar.new")}
+              className="codex-side-panel-add-tab"
+            >
+              ＋
+            </button>
           </div>
           <button
             type="button"
@@ -2518,8 +2565,18 @@ export function AppShell() {
         </div>}
 
         {/* Only the active viewer is mounted. Lightweight per-tab state is restored on activation. */}
-        <div style={{ flex: 1, overflow: "hidden", paddingBottom: "env(safe-area-inset-bottom)" }}>
-          {activeFileTab?.filePath ? (
+        <div style={{ flex: 1, minHeight: 0, overflow: "hidden", paddingBottom: "env(safe-area-inset-bottom)" }}>
+          <div
+            ref={setSideChatHost}
+            className="codex-side-chat-host"
+            style={{
+              display: activeFileTabId === SIDE_CHAT_TAB_ID ? "block" : "none",
+              position: "relative",
+              height: "100%",
+              overflow: "hidden",
+            }}
+          />
+          {activeFileTabId !== SIDE_CHAT_TAB_ID && activeFileTab?.filePath ? (
             <FileViewer
               key={`${activeFileTab.id}:${activeFileTab.viewerRevision ?? 0}`}
               filePath={activeFileTab.filePath}
@@ -2542,7 +2599,7 @@ export function AppShell() {
                 { sourceSessionId: activeFileTab.sourceSessionId },
               )}
             />
-          ) : (
+          ) : activeFileTabId !== SIDE_CHAT_TAB_ID ? (
             <div className="codex-side-panel-home">
               <div className="codex-side-panel-launchers">
                 <button
@@ -2567,7 +2624,7 @@ export function AppShell() {
                 </button>
               </div>
             </div>
-          )}
+          ) : null}
         </div>
       </div>
     </div>
