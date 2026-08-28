@@ -1295,12 +1295,19 @@ pre, code {
 
 .codex-project-collapse-chevron {
   flex: 0 0 auto;
+  opacity: 0;
   transform: rotate(-90deg);
-  transition: transform 120ms ease;
+  transition: opacity 100ms ease, transform 120ms ease;
 }
 
 .codex-project-collapse-chevron[data-expanded] {
   transform: rotate(0deg);
+}
+
+.codex-project-tree-heading:hover .codex-project-collapse-chevron,
+.codex-project-recents-label:hover .codex-project-collapse-chevron,
+.codex-project-section-toggle:focus-visible .codex-project-collapse-chevron {
+  opacity: 1;
 }
 
 .codex-project-tree-heading-actions {
