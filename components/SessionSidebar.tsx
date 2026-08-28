@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useLayoutEffect, useState, useCallback, useMemo, useRef, type CSSProperties, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import type { SessionInfo } from "@/lib/types";
 import { listSessionFamilies } from "@/lib/session-family";
 import { loadExplorerOpen, saveExplorerOpen } from "@/lib/file-explorer-state";
@@ -352,7 +353,7 @@ function PiWebTitle() {
   );
 }
 
-export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSession, initialSessionId, skipInitialProjectSelection, onInitialRestoreDone, refreshKey, selectedCwd: selectedCwdProp, onCwdChange, onOpenFile, explorerRefreshKey, onExplorerRefresh, onAtMention, onAtMentions, onBackgroundTaskDone, onRunningSessionIdsChange, onSessionsChange, onOpenSettings }: Props) {
+export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSession, initialSessionId, skipInitialProjectSelection, onInitialRestoreDone, refreshKey, onSessionDeleted, selectedCwd: selectedCwdProp, onCwdChange, onOpenFile, explorerRefreshKey, onExplorerRefresh, onAtMention, onAtMentions, onBackgroundTaskDone, onRunningSessionIdsChange, onSessionsChange, onOpenSettings }: Props) {
   const { t } = useI18n();
   const [allSessions, setAllSessions] = useState<SessionInfo[]>([]);
   const [loading, setLoading] = useState(true);
@@ -1691,6 +1692,7 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
               isUnread={familySessions.some((session) => unreadSessionIds.has(session.id))}
               onClick={() => handleSelectSessionFromList(family.root)}
               onRenamed={loadSessions}
+              onDeleted={onSessionDeleted}
             />
           );
         })}
@@ -1949,6 +1951,7 @@ function SessionItem({
   isUnread,
   onClick,
   onRenamed,
+  onDeleted,
   depth = 0,
   hasChildren = false,
   collapsed = false,
@@ -1960,6 +1963,7 @@ function SessionItem({
   isUnread?: boolean;
   onClick: () => void;
   onRenamed?: () => void;
+  onDeleted?: (id: string) => void;
   depth?: number;
   hasChildren?: boolean;
   collapsed?: boolean;
@@ -1967,12 +1971,74 @@ function SessionItem({
 }) {
   const { locale, t } = useI18n();
   const [hovered, setHovered] = useState(false);
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
+  const [renaming, setRenaming] = useState(false);
+  const [renameValue, setRenameValue] = useState("");
+  const inputRef = useRef<HTMLInputElement>(null);
 
   // A stored first message may be an SDK-expanded <skill> block; collapse it
   // back to the compact /skill:name args command the user typed before using
   // it as the auto-name fallback, mirroring MessageView's rendering.
   const displayFirstMessage = skillExpansionToCommand(session.firstMessage) ?? session.firstMessage;
   const title = session.name || displayFirstMessage.slice(0, 50) || session.id.slice(0, 12);
+
+  useEffect(() => {
+    if (!renaming) return;
+    const frame = requestAnimationFrame(() => inputRef.current?.select());
+    return () => cancelAnimationFrame(frame);
+  }, [renaming]);
+
+  useEffect(() => {
+    if (!contextMenu) return;
+    const close = () => setContextMenu(null);
+    const closeOnKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") close();
+    };
+    window.addEventListener("pointerdown", close);
+    window.addEventListener("keydown", closeOnKey);
+    window.addEventListener("resize", close);
+    window.addEventListener("scroll", close, true);
+    return () => {
+      window.removeEventListener("pointerdown", close);
+      window.removeEventListener("keydown", closeOnKey);
+      window.removeEventListener("resize", close);
+      window.removeEventListener("scroll", close, true);
+    };
+  }, [contextMenu]);
+
+  const startRename = useCallback(() => {
+    setContextMenu(null);
+    if (session.transient) return;
+    setRenameValue(title);
+    setRenaming(true);
+  }, [session.transient, title]);
+
+  const commitRename = useCallback(async () => {
+    const name = renameValue.trim();
+    setRenaming(false);
+    if (!name || name === title || name === (session.name ?? "")) return;
+    try {
+      const response = await fetch(`/api/sessions/${encodeURIComponent(session.id)}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name }),
+      });
+      if (response.ok) onRenamed?.();
+    } catch {
+      // Keep the current title when the rename request fails.
+    }
+  }, [onRenamed, renameValue, session.id, session.name, title]);
+
+  const deleteSession = useCallback(async () => {
+    setContextMenu(null);
+    if (session.transient || !window.confirm(t("sidebar.deleteSession", { title }))) return;
+    try {
+      const response = await fetch(`/api/sessions/${encodeURIComponent(session.id)}`, { method: "DELETE" });
+      if (response.ok) onDeleted?.(session.id);
+    } catch {
+      // Leave the session in place when deletion fails.
+    }
+  }, [onDeleted, session.id, session.transient, t, title]);
 
   const handleContextMenu = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     const handled = dispatchSessionRowContextMenu({
@@ -1984,19 +2050,29 @@ function SessionItem({
       clientY: e.clientY,
       refresh: () => { onRenamed?.(); },
     });
-    if (!handled) return;
     e.preventDefault();
     e.stopPropagation();
-  }, [onRenamed, session.cwd, session.id, session.name, session.path]);
+    if (handled || session.transient) {
+      setContextMenu(null);
+      return;
+    }
+    const menuWidth = 180;
+    const menuHeight = 82;
+    setContextMenu({
+      x: Math.max(8, Math.min(e.clientX, window.innerWidth - menuWidth - 8)),
+      y: Math.max(8, Math.min(e.clientY, window.innerHeight - menuHeight - 8)),
+    });
+  }, [onRenamed, session.cwd, session.id, session.name, session.path, session.transient]);
 
   // Fixed-height outer wrapper — content swaps in place so the list never reflows
   const ITEM_HEIGHT = 54;
 
   return (
+    <>
     <div
       className="codex-session-row"
       data-state={isSelected ? "selected" : hovered ? "hovered" : "idle"}
-      onClick={onClick}
+      onClick={renaming ? undefined : onClick}
       onContextMenu={handleContextMenu}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => { setHovered(false); }}
@@ -2014,7 +2090,32 @@ function SessionItem({
         overflow: "hidden",
       }}
     >
-      <>
+      {renaming ? (
+        <input
+          ref={inputRef}
+          value={renameValue}
+          onChange={(event) => setRenameValue(event.target.value)}
+          onBlur={() => void commitRename()}
+          onKeyDown={(event) => {
+            if (event.key === "Enter") void commitRename();
+            if (event.key === "Escape") setRenaming(false);
+          }}
+          autoFocus
+          aria-label={t("sidebar.rename")}
+          style={{
+            flex: 1,
+            height: 30,
+            padding: "5px 8px",
+            border: "1px solid var(--accent)",
+            borderRadius: 6,
+            outline: "none",
+            background: "var(--bg)",
+            color: "var(--text)",
+            font: "inherit",
+            fontSize: 12,
+          }}
+        />
+      ) : <>
           {/* Subagent indicator for child sessions */}
           {depth > 0 && (
             <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
@@ -2086,7 +2187,57 @@ function SessionItem({
             </button>
           )}
 
-      </>
+      </>}
     </div>
+    {contextMenu && createPortal(
+      <div
+        role="menu"
+        aria-label={title}
+        onPointerDown={(event) => event.stopPropagation()}
+        style={{
+          position: "fixed",
+          left: contextMenu.x,
+          top: contextMenu.y,
+          zIndex: 10000,
+          width: 180,
+          padding: 5,
+          border: "1px solid var(--border)",
+          borderRadius: 8,
+          background: "var(--bg-panel)",
+          boxShadow: "0 10px 28px rgba(0,0,0,0.34)",
+        }}
+      >
+        <button
+          role="menuitem"
+          onClick={startRename}
+          style={{
+            width: "100%", height: 34, padding: "0 9px", display: "flex", alignItems: "center", gap: 9,
+            border: 0, borderRadius: 5, background: "transparent", color: "var(--text)", cursor: "pointer", font: "inherit", fontSize: 12,
+          }}
+          onMouseEnter={(event) => { event.currentTarget.style.background = "var(--bg-hover)"; }}
+          onMouseLeave={(event) => { event.currentTarget.style.background = "transparent"; }}
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M12 20h9" /><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
+          </svg>
+          {t("sidebar.rename")}</button>
+        <button
+          role="menuitem"
+          onClick={() => void deleteSession()}
+          style={{
+            width: "100%", height: 34, padding: "0 9px", display: "flex", alignItems: "center", gap: 9,
+            border: 0, borderRadius: 5, background: "transparent", color: "#f87171", cursor: "pointer", font: "inherit", fontSize: 12,
+          }}
+          onMouseEnter={(event) => { event.currentTarget.style.background = "var(--bg-hover)"; }}
+          onMouseLeave={(event) => { event.currentTarget.style.background = "transparent"; }}
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M3 6h18" /><path d="M8 6V4h8v2" /><path d="m19 6-1 14H6L5 6" /><path d="M10 11v5M14 11v5" />
+          </svg>
+          {t("sidebar.delete")}</button>
+      </div>,
+      document.body,
+    )}
+    </>
   );
 }

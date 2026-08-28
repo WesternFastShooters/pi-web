@@ -65,9 +65,15 @@ test("formats session timestamps with the active locale", () => {
   assert.match(sessionItemSource, /formatRelativeTime\(session\.modified, locale\)/);
 });
 
-test("keeps session management in the downstream context menu", () => {
+test("opens a built-in session context menu with rename and delete actions", () => {
   assert.match(sessionItemSource, /const handleContextMenu[\s\S]*?dispatchSessionRowContextMenu\(\{/);
   assert.match(sessionItemSource, /onContextMenu=\{handleContextMenu\}/);
+  assert.match(sessionItemSource, /const \[contextMenu, setContextMenu\] = useState/);
+  assert.match(sessionItemSource, /createPortal\(/);
+  assert.match(sessionItemSource, /\{t\("sidebar\.rename"\)\}<\/button>/);
+  assert.match(sessionItemSource, /\{t\("sidebar\.delete"\)\}<\/button>/);
+  assert.match(sessionItemSource, /method: "PATCH"/);
+  assert.match(sessionItemSource, /method: "DELETE"/);
 });
 
 test("manual and lifecycle refreshes bypass the server session-list cache", () => {
