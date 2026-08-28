@@ -4,6 +4,7 @@ import test from "node:test";
 
 const source = readFileSync(new URL("./ChatWindow.tsx", import.meta.url), "utf8");
 const appShellSource = readFileSync(new URL("./AppShell.tsx", import.meta.url), "utf8");
+const css = readFileSync(new URL("../app/globals.css", import.meta.url), "utf8");
 
 test("exposes pi-btw as a side chat launcher", () => {
   assert.match(source, /slashCommands\.some\(\(command\) => command\.name === "btw"\)/);
@@ -45,4 +46,16 @@ test("side chat owns a visible sender instead of an invisible terminal input", (
   assert.match(source, /\[─━-\]\{8,\}/);
   assert.match(source, /codex-side-chat-message-\$\{entry\.role\}/);
   assert.match(source, /normalized\.slice\(2, -3\)/);
+});
+
+test("hides the extension status footer below the primary sender", () => {
+  assert.doesNotMatch(source, /<ExtensionStatusBar/);
+});
+
+test("aligns the primary and side-chat sender cards", () => {
+  const composerRule = css.match(/\.codex-side-chat-composer\s*\{([^}]*)\}/)?.[1] ?? "";
+  const senderRule = css.match(/\.codex-side-chat-sender\s*\{([^}]*)\}/)?.[1] ?? "";
+
+  assert.match(composerRule, /margin:\s*12px 12px 16px/);
+  assert.match(senderRule, /min-height:\s*106px/);
 });

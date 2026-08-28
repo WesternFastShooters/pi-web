@@ -2770,7 +2770,7 @@ span.token.table {
 .codex-side-chat-composer {
   position: relative;
   flex: 0 0 auto;
-  margin: 12px;
+  margin: 12px 12px 16px;
   min-width: 0;
   border: 1px solid var(--border);
   border-radius: 20px;
@@ -2782,7 +2782,7 @@ span.token.table {
 .codex-side-chat-sender {
   display: block;
   width: 100%;
-  min-height: 112px;
+  min-height: 106px;
   max-height: 220px;
   resize: none;
   overflow: auto;
