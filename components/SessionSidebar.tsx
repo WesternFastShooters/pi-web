@@ -105,6 +105,7 @@ interface Props {
   onBackgroundTaskDone?: () => void;
   onRunningSessionIdsChange?: (ids: Set<string>) => void;
   onSessionsChange?: (sessions: SessionInfo[]) => void;
+  onOpenSettings?: (section: "models" | "skills" | "plugins") => void;
 }
 
 interface WorktreeEntry {
@@ -351,7 +352,7 @@ function PiWebTitle() {
   );
 }
 
-export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSession, initialSessionId, skipInitialProjectSelection, onInitialRestoreDone, refreshKey, onSessionDeleted, selectedCwd: selectedCwdProp, onCwdChange, onOpenFile, explorerRefreshKey, onExplorerRefresh, onAtMention, onAtMentions, onBackgroundTaskDone, onRunningSessionIdsChange, onSessionsChange }: Props) {
+export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSession, initialSessionId, skipInitialProjectSelection, onInitialRestoreDone, refreshKey, onSessionDeleted, selectedCwd: selectedCwdProp, onCwdChange, onOpenFile, explorerRefreshKey, onExplorerRefresh, onAtMention, onAtMentions, onBackgroundTaskDone, onRunningSessionIdsChange, onSessionsChange, onOpenSettings }: Props) {
   const { t } = useI18n();
   const [allSessions, setAllSessions] = useState<SessionInfo[]>([]);
   const [loading, setLoading] = useState(true);
@@ -378,7 +379,7 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
   const [worktreeLoadingCwd, setWorktreeLoadingCwd] = useState<string | null>(null);
   const wtDropdownRef = useRef<HTMLDivElement>(null);
   const wtNewInputRef = useRef<HTMLInputElement>(null);
-  const [explorerOpen, setExplorerOpen] = useState(true);
+  const [explorerOpen, setExplorerOpen] = useState(false);
   const [explorerKey, setExplorerKey] = useState(0);
   const [explorerUploadBusy, setExplorerUploadBusy] = useState(false);
   const [fileSearchOpen, setFileSearchOpen] = useState(false);
@@ -974,10 +975,11 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
           flexShrink: 0,
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+        <div className="codex-sidebar-brand-row" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
           <PiWebTitle />
           <div style={{ display: "flex", gap: 6 }}>
             <button
+              className="codex-sidebar-header-new"
               onClick={handleNewSession}
               disabled={!selectedCwd}
               style={{
@@ -1057,8 +1059,46 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
           </div>
         </div>
 
+        <button
+          className="codex-sidebar-new-row"
+          onClick={handleNewSession}
+          disabled={!selectedCwd}
+          title={selectedCwd ? t("sidebar.newSessionTitle", { path: selectedCwd }) : t("sidebar.selectProject")}
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4Z"/>
+          </svg>
+          <span>{t("sidebar.new")}</span>
+          <span className="codex-sidebar-row-plus">＋</span>
+        </button>
+
+        <nav className="codex-sidebar-primary-nav" aria-label={t("common.settings")}>
+          <button type="button" onClick={() => {
+            const next = !explorerOpen;
+            setExplorerOpen(next);
+            saveExplorerOpen(next);
+          }} aria-pressed={explorerOpen}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 7h6l2 2h10v10H3Z"/><path d="M3 7V5h6l2 2"/></svg>
+            <span>{t("files.explorer")}</span>
+          </button>
+          <button type="button" onClick={() => onOpenSettings?.("models")}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 8v8M8 12h8"/></svg>
+            <span>{t("common.models")}</span>
+          </button>
+          <button type="button" onClick={() => onOpenSettings?.("skills")} disabled={!selectedCwd}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m12 3 2.2 4.5L19 8.2l-3.5 3.4.8 4.8-4.3-2.3-4.3 2.3.8-4.8L5 8.2l4.8-.7Z"/></svg>
+            <span>{t("common.skills")}</span>
+          </button>
+          <button type="button" onClick={() => onOpenSettings?.("plugins")} disabled={!selectedCwd}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M8 3v4M16 3v4M5 7h14v4a7 7 0 0 1-14 0Z"/><path d="M12 18v3"/></svg>
+            <span>{t("common.plugins")}</span>
+          </button>
+        </nav>
+
+        <div className="codex-sidebar-section-label">{t("sidebar.projects")}</div>
+
         {/* CWD picker */}
-        <div ref={dropdownRef} style={{ position: "relative" }}>
+        <div ref={dropdownRef} className="codex-project-picker" style={{ position: "relative" }}>
           <button
             onClick={() => setDropdownOpen((v) => !v)}
             title={selectedProject?.root ?? selectedCwd ?? ""}
@@ -1077,6 +1117,9 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
               transition: "border-color 0.15s, background 0.15s",
             }}
           >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ flexShrink: 0, marginRight: 8 }}>
+              <path d="M3 7h6l2 2h10v10H3z"/><path d="M3 7V5h6l2 2"/>
+            </svg>
             {selectedCwd ? (
               <PathLabel
                 text={displayCwd(selectedProject?.root ?? selectedCwd, homeDir)}
@@ -1579,6 +1622,7 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
         })()}
         {inactiveWorktreeSelector && (
           <button
+            className="codex-worktree-hint"
             type="button"
             aria-disabled="true"
             tabIndex={-1}
@@ -1617,6 +1661,7 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
 
       {/* Session list */}
       <div className="codex-session-list" style={{ flex: explorerOpen && (selectedCwdProp || selectedCwd) ? "1 1 0" : "1 1 auto", overflowY: "auto", padding: "0", minHeight: 80 }}>
+        <div className="codex-sidebar-section-label codex-recents-label">{t("sidebar.recent")}</div>
         {loading && (
           <div style={{ padding: "16px 14px", color: "var(--text-muted)", fontSize: 12 }}>
             {t("sidebar.loading")}
@@ -1656,7 +1701,7 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
       </div>
 
       {/* File Explorer section */}
-      {(selectedCwdProp || selectedCwd) && (
+      {(selectedCwdProp || selectedCwd) && explorerOpen && (
         <div
           className="codex-explorer-panel"
           style={{

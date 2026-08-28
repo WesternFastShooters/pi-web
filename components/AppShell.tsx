@@ -137,7 +137,7 @@ export function AppShell() {
   const [projectTrustBusy, setProjectTrustBusy] = useState(false);
   const [projectTrustError, setProjectTrustError] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [rightPanelOpen, setRightPanelOpen] = useState(false);
+  const [rightPanelOpen, setRightPanelOpen] = useState(true);
   const [terminalOpen, setTerminalOpen] = useState(false);
   const [mobileToolbarMoreOpen, setMobileToolbarMoreOpen] = useState(false);
   const [mobileSidebarReady, setMobileSidebarReady] = useState(false);
@@ -177,7 +177,7 @@ export function AppShell() {
     growthDirection: "right",
     maxWidth: SIDEBAR_MAX_WIDTH,
     minWidth: SIDEBAR_MIN_WIDTH,
-    storageKey: "pi-sidebar-width",
+    storageKey: "pi-sidebar-width-v4",
     widthRef: sidebarWidthRef,
   });
   const rightPanelResizer = useResizablePanel({
@@ -189,7 +189,7 @@ export function AppShell() {
     growthDirection: "left",
     maxWidth: RIGHT_PANEL_MAX_WIDTH,
     minWidth: RIGHT_PANEL_MIN_WIDTH,
-    storageKey: "pi-right-panel-width",
+    storageKey: "pi-right-panel-width-v4",
     widthRef: rightPanelWidthRef,
   });
   const reclampSidebarWidth = sidebarResizer.reclampWidth;
@@ -1014,52 +1014,26 @@ export function AppShell() {
         onBackgroundTaskDone={handleBackgroundTaskDone}
         onRunningSessionIdsChange={handleRunningSessionIdsChange}
         onSessionsChange={handleSessionsChange}
+        onOpenSettings={(section) => setSettingsSection(section)}
       />
-      <div className="codex-sidebar-footer" style={{ padding: "8px", flexShrink: 0, display: "flex", justifyContent: "space-between", gap: 4 }}>
-        {([
-          ["models", translate("common.models")],
-          ["skills", translate("common.skills")],
-        ] as const).map(([section, label]) => {
-          const disabled = section !== "models" && !projectTrustCwd;
-          return (
-            <button
-              key={section}
-              type="button"
-              onClick={() => setSettingsSection(section)}
-              disabled={disabled}
-              title={disabled ? translate("settings.projectRequired") : label}
-              aria-label={label}
-              style={{
-                flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
-                height: 32, padding: 0, background: "none", border: "none",
-                borderRadius: 9, color: "var(--text-muted)", cursor: disabled ? "default" : "pointer",
-                fontSize: 12, opacity: disabled ? 0.35 : 1,
-                transition: "background 0.12s, color 0.12s",
-              }}
-              onMouseEnter={(event) => { if (!disabled) { event.currentTarget.style.background = "var(--bg-hover)"; event.currentTarget.style.color = "var(--text)"; } }}
-              onMouseLeave={(event) => { event.currentTarget.style.background = "none"; event.currentTarget.style.color = "var(--text-muted)"; }}
-            >
-              <SettingsSectionIcon section={section} size={14} strokeWidth={2} />
-              <span>{label}</span>
-            </button>
-          );
-        })}
+      <div className="codex-sidebar-footer" style={{ padding: "8px", flexShrink: 0, display: "flex" }}>
         <button
           type="button"
           onClick={() => setSettingsSection(getLastSettingsSection(projectTrustCwd))}
           title={translate("common.settings")}
           aria-label={translate("common.settings")}
           style={{
-            flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
-            height: 32, padding: 0, background: "none", border: "none",
+            flex: 1, display: "flex", alignItems: "center", justifyContent: "flex-start", gap: 9,
+            height: 36, padding: "0 8px", background: "none", border: "none",
             borderRadius: 9, color: "var(--text-muted)", cursor: "pointer",
             fontSize: 12, transition: "background 0.12s, color 0.12s",
           }}
           onMouseEnter={(event) => { event.currentTarget.style.background = "var(--bg-hover)"; event.currentTarget.style.color = "var(--text)"; }}
           onMouseLeave={(event) => { event.currentTarget.style.background = "none"; event.currentTarget.style.color = "var(--text-muted)"; }}
         >
+          <span className="codex-profile-avatar">P</span>
+          <span>Pi</span>
           <SettingsSectionIcon section="general" size={14} strokeWidth={2} />
-          <span>{translate("common.settings")}</span>
         </button>
       </div>
     </>
@@ -1892,6 +1866,11 @@ export function AppShell() {
               </svg>
             )}
           </button>
+          {!isMobile && (
+            <div className="codex-task-title" title={selectedSession?.name ?? selectedSession?.firstMessage ?? translate("sidebar.new")}>
+              {selectedSession?.name ?? selectedSession?.firstMessage ?? translate("sidebar.new")}
+            </div>
+          )}
           {isMobile && (
             <div
               ref={mobileToolbarRef}
@@ -1966,13 +1945,13 @@ export function AppShell() {
             </div>
           )}
           {!isMobile && (
-            <>
-              {renderThemeButton(false)}
-              {renderLanguageButton(false)}
-              {renderProjectTrustWarning(false)}
-              {renderChatToolbarActions(false)}
+            <div className="codex-topbar-desktop-tools">
+              <div className="codex-legacy-toolbar">
+                {renderProjectTrustWarning(false)}
+                {renderChatToolbarActions(false)}
+              </div>
               {renderSessionStatsButton(false)}
-            </>
+            </div>
           )}
           {!isMobile && renderTerminalToggle()}
           {!isMobile && renderMainFileToggle(false)}
@@ -2384,7 +2363,7 @@ export function AppShell() {
         } as React.CSSProperties}
       >
         {/* Right panel tab bar */}
-        <div className="codex-detail-header" style={{
+        {fileTabs.length > 0 && <div className="codex-detail-header" style={{
           display: "flex",
           alignItems: "center",
           flexShrink: 0,
@@ -2421,7 +2400,7 @@ export function AppShell() {
               <rect x="3" y="3" width="18" height="18" rx="2" /><line x1="15" y1="3" x2="15" y2="21" />
             </svg>
           </button>
-        </div>
+        </div>}
 
         {/* Only the active viewer is mounted. Lightweight per-tab state is restored on activation. */}
         <div style={{ flex: 1, overflow: "hidden", paddingBottom: "env(safe-area-inset-bottom)" }}>
@@ -2449,8 +2428,33 @@ export function AppShell() {
               )}
             />
           ) : (
-            <div style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-dim)", fontSize: 12 }}>
-               {translate("files.noneOpen")}
+            <div className="codex-activity-overview">
+              <section>
+                <div className="codex-activity-heading">
+                  <span>{translate("activity.outputs")}</span><span>＋</span>
+                </div>
+                <div className="codex-activity-empty">{translate("activity.createOutput")}</div>
+              </section>
+              <section>
+                <div className="codex-activity-heading"><span>{translate("activity.background")}</span></div>
+                {runningSessionIds.size > 0 ? (
+                  <div className="codex-activity-row">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="m7 9 3 3-3 3M13 15h4"/></svg>
+                    <span>{translate("activity.running", { count: runningSessionIds.size })}</span>
+                  </div>
+                ) : <div className="codex-activity-empty">{translate("activity.noneRunning")}</div>}
+              </section>
+              <section>
+                <div className="codex-activity-heading">
+                  <span>{translate("activity.sources")}</span><span>＋</span>
+                </div>
+                {selectedSession?.cwd ? (
+                  <div className="codex-activity-row">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path d="M3 7h6l2 2h10v10H3z"/><path d="M3 7V5h6l2 2"/></svg>
+                    <span title={selectedSession.cwd}>{selectedSession.cwd.split("/").filter(Boolean).pop()}</span>
+                  </div>
+                ) : <div className="codex-activity-empty">{translate("activity.noSources")}</div>}
+              </section>
             </div>
           )}
         </div>

@@ -73,6 +73,10 @@ html.dark {
   --bg-subtle: rgba(255,255,255,0.025);
 }
 
+html.dark .codex-sidebar {
+  background: #282828 !important;
+}
+
 /* WebKit reports dvh/innerHeight without the status-bar strip for installed
    home-screen apps even though the layout still starts at the screen's top.
    In standalone mode there is no browser toolbar to make vh unstable, and vh
@@ -1083,6 +1087,30 @@ pre, code {
   background: var(--bg) !important;
 }
 
+.codex-task-title {
+  min-width: 0;
+  max-width: min(48vw, 560px);
+  overflow: hidden;
+  padding-inline: 10px;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.codex-topbar-desktop-tools {
+  display: flex;
+  height: 100%;
+  align-items: stretch;
+  margin-left: auto;
+}
+
+.codex-legacy-toolbar {
+  display: flex;
+  align-items: stretch;
+}
+
 .codex-topbar {
   min-height: calc(var(--height-toolbar) + env(safe-area-inset-top));
   border-bottom: 0.5px solid var(--border-strong) !important;
@@ -1119,8 +1147,111 @@ pre, code {
 }
 
 .codex-sidebar-header {
-  padding: 10px 10px 8px !important;
+  padding: 10px 10px 6px !important;
   border-bottom: 0 !important;
+}
+
+.codex-sidebar-brand-row {
+  height: 36px;
+  margin-bottom: 4px !important;
+}
+
+.codex-sidebar-brand-row .codex-sidebar-header-new {
+  display: none !important;
+}
+
+.codex-sidebar-new-row {
+  display: flex;
+  width: 100%;
+  height: 36px;
+  align-items: center;
+  gap: 10px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 13px;
+  text-align: left;
+}
+
+.codex-sidebar-new-row:hover:not(:disabled) {
+  background: var(--bg-hover);
+  color: var(--text);
+}
+
+.codex-sidebar-new-row:disabled {
+  cursor: default;
+  opacity: 0.4;
+}
+
+.codex-sidebar-row-plus {
+  margin-left: auto;
+  color: var(--text-dim);
+  font-size: 16px;
+}
+
+.codex-sidebar-primary-nav {
+  display: grid;
+  gap: 1px;
+  margin-top: 2px;
+}
+
+.codex-sidebar-primary-nav button {
+  display: flex;
+  width: 100%;
+  height: 36px;
+  align-items: center;
+  gap: 10px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  font: inherit;
+  font-size: 13px;
+  text-align: left;
+}
+
+.codex-sidebar-primary-nav button:hover:not(:disabled) {
+  background: var(--bg-hover);
+  color: var(--text);
+}
+
+.codex-sidebar-primary-nav button:disabled {
+  cursor: default;
+  opacity: 0.35;
+}
+
+.codex-sidebar-section-label {
+  padding: 18px 8px 6px;
+  color: var(--text-dim);
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.codex-project-picker > button {
+  height: 36px;
+  padding-inline: 8px !important;
+  border: 0 !important;
+  border-radius: var(--radius-md) !important;
+  background: transparent !important;
+  font-family: inherit !important;
+}
+
+.codex-project-picker > button:hover {
+  background: var(--bg-hover) !important;
+}
+
+.codex-project-picker > button span {
+  font-family: inherit !important;
+  font-size: 13px !important;
+}
+
+.codex-worktree-hint {
+  display: none !important;
 }
 
 .codex-sidebar-header > div:first-child {
@@ -1149,18 +1280,51 @@ pre, code {
 }
 
 .codex-session-list {
-  padding: 2px 8px 8px !important;
+  padding: 0 8px 8px !important;
+}
+
+.codex-sidebar-footer {
+  border-top: 0.5px solid var(--border);
+}
+
+.codex-sidebar-footer button > svg:last-child {
+  margin-left: auto;
+}
+
+.codex-profile-avatar {
+  display: inline-flex;
+  width: 24px;
+  height: 24px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: #101010;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.codex-recents-label {
+  padding-inline: 8px;
 }
 
 .codex-session-row {
   width: 100%;
-  height: 48px !important;
+  height: 36px !important;
   margin-block: 2px;
   padding-inline: 10px 8px !important;
   border-left: 0 !important;
   border-radius: var(--radius-lg);
   background: transparent !important;
   transition: background var(--transition-basic), color var(--transition-basic) !important;
+}
+
+.codex-session-row > div {
+  min-width: 0;
+}
+
+.codex-session-row > div > div:last-child {
+  display: none;
 }
 
 .codex-session-row[data-state="hovered"] {
@@ -1177,8 +1341,9 @@ pre, code {
 }
 
 .codex-explorer-panel {
-  margin-inline: 8px;
-  border-top: 0.5px solid var(--border-strong) !important;
+  margin-inline: 10px;
+  border-top: 0.5px solid var(--border) !important;
+  opacity: 0.72;
 }
 
 .codex-sidebar-footer {
@@ -1205,19 +1370,27 @@ pre, code {
   max-width: 768px !important;
 }
 
-.codex-composer-surface {
-  min-height: 52px;
-  padding: 12px 10px 12px 16px !important;
-  border: 0 !important;
-  border-radius: var(--radius-3xl) !important;
+.codex-composer-card {
+  padding: 8px 10px 6px;
+  border-radius: var(--radius-3xl);
   outline: 0.5px solid var(--border-strong);
-  background: color-mix(in oklab, var(--bg-panel) 90%, transparent) !important;
-  box-shadow: var(--elevation-prominent) !important;
+  background: color-mix(in oklab, var(--bg-selected) 78%, transparent);
+  box-shadow: var(--elevation-prominent);
   backdrop-filter: blur(12px);
 }
 
+.codex-composer-surface {
+  min-height: 54px;
+  padding: 10px 8px 8px 8px !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  outline: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
 html.dark .codex-composer-surface {
-  background: color-mix(in oklab, var(--bg-selected) 78%, transparent) !important;
+  background: transparent !important;
 }
 
 .codex-composer-surface textarea {
@@ -1240,8 +1413,8 @@ html.dark .codex-composer-surface {
 
 .codex-detail-panel {
   background: var(--bg) !important;
-  border-left: 0.5px solid var(--border-strong) !important;
-  box-shadow: -8px 0 24px rgba(0, 0, 0, 0.035);
+  border-left: 0 !important;
+  box-shadow: none;
 }
 
 .codex-detail-header {
@@ -1316,6 +1489,69 @@ html.dark .codex-composer-surface {
 .codex-detail-panel .file-diff-view {
   font-size: 12.5px !important;
   line-height: 1.6 !important;
+}
+
+.codex-activity-overview {
+  width: calc(100% - 24px);
+  height: fit-content !important;
+  min-height: 0 !important;
+  align-self: flex-start;
+  box-sizing: border-box;
+  max-height: calc(100% - 24px);
+  overflow-y: auto;
+  margin: 12px;
+  padding: 12px 16px 24px;
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius-3xl);
+  background: var(--bg-selected);
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.codex-activity-overview section {
+  padding: 2px 0 14px;
+  border-bottom: 0.5px solid var(--border);
+}
+
+.codex-activity-overview section + section {
+  padding-top: 14px;
+}
+
+.codex-activity-heading {
+  display: flex;
+  min-height: 24px;
+  align-items: center;
+  justify-content: space-between;
+  color: var(--text-muted);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.codex-activity-heading span:last-child {
+  color: var(--text-dim);
+  font-size: 18px;
+  font-weight: 300;
+}
+
+.codex-activity-empty {
+  padding-top: 5px;
+  color: var(--text-dim);
+}
+
+.codex-activity-row {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+  padding-top: 7px;
+  color: var(--text-muted);
+}
+
+.codex-activity-row span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .codex-terminal-panel {

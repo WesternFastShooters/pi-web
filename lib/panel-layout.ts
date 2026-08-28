@@ -1,11 +1,11 @@
 export const MOBILE_MAX_WIDTH = 640;
 export const SPLIT_PANEL_MIN_WIDTH = 960;
 
-export const SIDEBAR_DEFAULT_WIDTH = 260;
+export const SIDEBAR_DEFAULT_WIDTH = 350;
 export const SIDEBAR_MIN_WIDTH = 180;
 export const SIDEBAR_MAX_WIDTH = 480;
 
-export const RIGHT_PANEL_FALLBACK_WIDTH = 560;
+export const RIGHT_PANEL_FALLBACK_WIDTH = 360;
 export const RIGHT_PANEL_MIN_WIDTH = 300;
 export const RIGHT_PANEL_MAX_WIDTH = 1200;
 
@@ -19,7 +19,7 @@ export function clampPanelWidth(width: number, minWidth: number, maxWidth: numbe
 }
 
 export function getDefaultRightPanelWidth(viewportWidth: number): number {
-  return clampPanelWidth(viewportWidth * 0.42, 360, 640);
+  return clampPanelWidth(viewportWidth * 0.18, 300, 360);
 }
 
 export function getSidebarMaxWidth(options: {
