@@ -1562,6 +1562,16 @@ pre, code {
   border-top: 0;
 }
 
+.codex-sidebar-footer::before {
+  position: absolute;
+  top: 0;
+  left: -12px;
+  right: -12px;
+  border-top: 0.5px solid var(--border);
+  content: "";
+  pointer-events: none;
+}
+
 .codex-sidebar-footer button {
   width: 100%;
   min-width: 0;
