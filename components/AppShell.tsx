@@ -139,6 +139,9 @@ export function AppShell() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [rightPanelOpen, setRightPanelOpen] = useState(false);
   const [summaryOpen, setSummaryOpen] = useState(false);
+  const [sideChatAvailable, setSideChatAvailable] = useState(false);
+  const [sideChatOpen, setSideChatOpen] = useState(false);
+  const [sideChatToggleKey, setSideChatToggleKey] = useState(0);
   const [terminalOpen, setTerminalOpen] = useState(false);
   const [mobileToolbarMoreOpen, setMobileToolbarMoreOpen] = useState(false);
   const [mobileSidebarReady, setMobileSidebarReady] = useState(false);
@@ -1203,6 +1206,32 @@ export function AppShell() {
     );
   };
 
+  const renderSideChatToggle = () => {
+    if (!sideChatAvailable) return null;
+    return (
+      <button
+        type="button"
+        onClick={() => setSideChatToggleKey((key) => key + 1)}
+        aria-expanded={sideChatOpen}
+        title={translate("chat.sideChat")}
+        aria-label={translate("chat.sideChat")}
+        style={{
+          display: "flex", alignItems: "center", justifyContent: "center",
+          width: TOP_BAR_ICON_BUTTON_SIZE, height: TOP_BAR_ICON_BUTTON_SIZE, padding: 0,
+          background: sideChatOpen ? "var(--bg-selected)" : "none",
+          border: "none", borderLeft: "1px solid var(--border)",
+          color: sideChatOpen ? "var(--text)" : "var(--text-muted)",
+          cursor: "pointer", flexShrink: 0, transition: "color 0.12s, background 0.12s",
+        }}
+      >
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <path d="M21 12a8 8 0 0 1-8 8H6l-4 2 1.5-4A9 9 0 1 1 21 12Z" />
+          <path d="M8 12h8M12 8v8" />
+        </svg>
+      </button>
+    );
+  };
+
   const renderChatToolbarActions = (mobile: boolean) => {
     if (!mobile && !showChat) return null;
     return (
@@ -1686,6 +1715,7 @@ export function AppShell() {
       title={translate("activity.toggleSummary")}
       aria-label={translate("activity.toggleSummary")}
       style={{
+        marginLeft: !mobile ? "auto" : 0,
         display: "flex", alignItems: "center", justifyContent: "center",
         width: TOP_BAR_ICON_BUTTON_SIZE, height: TOP_BAR_ICON_BUTTON_SIZE, padding: 0,
         background: summaryOpen ? "var(--bg-selected)" : "none",
@@ -1984,6 +2014,7 @@ export function AppShell() {
               {renderSessionStatsButton(true)}
               {renderTerminalToggle()}
               {renderSummaryToggle(true)}
+              {renderSideChatToggle()}
               {fileTabs.length > 0 && renderMainFileToggle(true)}
               {isNarrowMobile && mobileToolbarMoreOpen && (
                 <div
@@ -2011,6 +2042,7 @@ export function AppShell() {
             </div>
           )}
           {!isMobile && renderSummaryToggle(false)}
+          {!isMobile && renderSideChatToggle()}
           {!isMobile && fileTabs.length > 0 && renderMainFileToggle(false)}
           {isMobile && sessionHasBranches && (
             <BranchNavigator
@@ -2338,6 +2370,9 @@ export function AppShell() {
               onSessionStatsChange={handleSessionStatsChange}
               onSessionStatsPanelOpen={openSessionStatsPanel}
               onContextUsageChange={handleContextUsageChange}
+              sideChatToggleKey={sideChatToggleKey}
+              onSideChatAvailabilityChange={setSideChatAvailable}
+              onSideChatOpenChange={setSideChatOpen}
               onOpenFile={handleOpenLinkedFile}
               onOpenSession={handleOpenSession}
               soundEnabled={soundEnabled}

@@ -45,6 +45,9 @@ interface Props {
   onSessionStatsChange?: (stats: SessionStatsInfo | null) => void;
   onSessionStatsPanelOpen?: () => void;
   onContextUsageChange?: (usage: { percent: number | null; contextWindow: number; tokens: number | null } | null) => void;
+  sideChatToggleKey?: number;
+  onSideChatAvailabilityChange?: (available: boolean) => void;
+  onSideChatOpenChange?: (open: boolean) => void;
   onOpenFile?: (filePath: string) => void;
   onOpenSession?: (sessionId: string) => void;
   /** Completion sound state + controls, owned by AppShell so tasks finishing in
@@ -76,6 +79,12 @@ function phaseLabel(phase: AgentPhase, t: (key: string, params?: Record<string, 
 
 const CHAT_MINIMAP_WIDTH = 36;
 const CHAT_COLUMN_PADDING = 16;
+
+function isBtwCustomRequest(request: Extract<ExtensionUiRequest, { method: "custom" }>): boolean {
+  return normalizeCustomPanelLines(request.lines)
+    .slice(0, 4)
+    .some((line) => /(?:^|\s)BTW(?:\s+tangent)?(?:\s*·|\s*$)/.test(line.trim()));
+}
 
 function NewSessionUpdateLink({
   label,
@@ -256,7 +265,7 @@ function ProcessDetailsGroup({ messageCount, toolCallCount, defaultExpanded = fa
   );
 }
 
-export function ChatWindow({ session, sessionRunning, newSessionCwd, newSessionDraftKey, onAgentEnd, onAttentionNeeded, onSessionCreated, onSessionForked, modelsRefreshKey, chatInputRef, onBranchDataChange, onSystemPromptChange, onSystemToolsChange, onSystemInfoLoaderChange, onSessionStatsChange, onSessionStatsPanelOpen, onContextUsageChange, onOpenFile, onOpenSession, soundEnabled = true, onSoundToggle, playDoneSound = () => {}, unlockAudio, terminalOpen = false, onTerminalClose }: Props) {
+export function ChatWindow({ session, sessionRunning, newSessionCwd, newSessionDraftKey, onAgentEnd, onAttentionNeeded, onSessionCreated, onSessionForked, modelsRefreshKey, chatInputRef, onBranchDataChange, onSystemPromptChange, onSystemToolsChange, onSystemInfoLoaderChange, onSessionStatsChange, onSessionStatsPanelOpen, onContextUsageChange, sideChatToggleKey = 0, onSideChatAvailabilityChange, onSideChatOpenChange, onOpenFile, onOpenSession, soundEnabled = true, onSoundToggle, playDoneSound = () => {}, unlockAudio, terminalOpen = false, onTerminalClose }: Props) {
   const { t } = useI18n();
   const isMobile = useIsMobile();
   const completionNotificationsEnabled = session?.relation?.kind !== "subagent";
@@ -305,6 +314,26 @@ export function ChatWindow({ session, sessionRunning, newSessionCwd, newSessionD
     modelsRefreshKey, chatInputRef, onBranchDataChange, onSystemPromptChange, onSystemToolsChange, onSystemInfoLoaderChange, onSessionStatsPanelOpen,
   });
   const sessionBusy = agentRunning || bashRunning;
+  const hasBtwCommand = slashCommands.some((command) => command.name === "btw");
+  const [btwSideChatExpanded, setBtwSideChatExpanded] = useState(true);
+  const btwSideChatRequestRef = useRef<{ sessionKey: string; request: ExtensionCustomRequest } | null>(null);
+  const sideChatSessionKey = session?.id ?? newSessionDraftKey ?? "";
+  const currentBtwSideChatRequest = extensionCustomUi && isBtwCustomRequest(extensionCustomUi) ? extensionCustomUi : null;
+  if (currentBtwSideChatRequest) {
+    btwSideChatRequestRef.current = { sessionKey: sideChatSessionKey, request: currentBtwSideChatRequest };
+  }
+  const cachedBtwSideChatRequest = btwSideChatRequestRef.current?.sessionKey === sideChatSessionKey
+    ? btwSideChatRequestRef.current.request
+    : null;
+  const btwSideChatRequest = currentBtwSideChatRequest ?? (!extensionCustomUi ? cachedBtwSideChatRequest : null);
+  const btwSideChatHidden = Boolean(btwSideChatRequest && !btwSideChatExpanded);
+  const btwSideChatOpen = Boolean(btwSideChatRequest && !btwSideChatHidden);
+  const customUiToRender = extensionCustomUi ?? (btwSideChatExpanded ? cachedBtwSideChatRequest : null);
+  const btwSideChatRequestId = btwSideChatRequest?.id;
+
+  useEffect(() => {
+    if (btwSideChatRequestId) setBtwSideChatExpanded(true);
+  }, [btwSideChatRequestId]);
   const terminalEntries = useMemo(
     () => messages.filter((message): message is BashExecutionMessage => message.role === "bashExecution"),
     [messages],
@@ -324,6 +353,31 @@ export function ChatWindow({ session, sessionRunning, newSessionCwd, newSessionD
   useEffect(() => {
     registerAbortHandler(sessionBusy ? handleAbort : null);
   }, [sessionBusy, handleAbort]);
+
+  useEffect(() => {
+    if (!session?.id) return;
+    void loadSlashCommands();
+  }, [session?.id, loadSlashCommands]);
+
+  useEffect(() => {
+    onSideChatAvailabilityChange?.(hasBtwCommand);
+    return () => onSideChatAvailabilityChange?.(false);
+  }, [hasBtwCommand, onSideChatAvailabilityChange]);
+
+  useEffect(() => {
+    onSideChatOpenChange?.(btwSideChatOpen);
+  }, [btwSideChatOpen, onSideChatOpenChange]);
+
+  const handledSideChatToggleKeyRef = useRef(sideChatToggleKey);
+  useEffect(() => {
+    if (sideChatToggleKey === handledSideChatToggleKeyRef.current) return;
+    handledSideChatToggleKeyRef.current = sideChatToggleKey;
+    if (btwSideChatRequest) {
+      setBtwSideChatExpanded((open) => !open);
+      return;
+    }
+    if (hasBtwCommand && !sessionBusy) void handleSend("/btw");
+  }, [btwSideChatRequest, handleSend, hasBtwCommand, sessionBusy, sideChatToggleKey]);
 
   // --- Lazy-load historical messages ---
   // Only render the last N messages initially. When the user scrolls to the
@@ -627,7 +681,11 @@ export function ChatWindow({ session, sessionRunning, newSessionCwd, newSessionD
   return (
     <div
       className="codex-chat-window relative flex h-full min-w-0 flex-col overflow-hidden"
-      style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+      style={{
+        paddingRight: btwSideChatOpen && !isMobile ? 440 : undefined,
+        paddingBottom: "env(safe-area-inset-bottom)",
+        transition: "padding-right 160ms ease",
+      }}
       onDragEnter={handleDragEnter}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
@@ -672,10 +730,12 @@ export function ChatWindow({ session, sessionRunning, newSessionCwd, newSessionD
         />
       )}
 
-      {extensionCustomUi && (
+      {customUiToRender && !btwSideChatHidden && (
         <ExtensionCustomPanel
-          request={extensionCustomUi}
+          request={customUiToRender}
           onInput={sendExtensionCustomInput}
+          sideDock={isBtwCustomRequest(customUiToRender)}
+          onDockClose={() => setBtwSideChatExpanded(false)}
         />
       )}
 
@@ -1275,9 +1335,13 @@ type ExtensionCustomRequest = Extract<ExtensionUiRequest, { method: "custom" }>;
 function ExtensionCustomPanel({
   request,
   onInput,
+  sideDock = false,
+  onDockClose,
 }: {
   request: ExtensionCustomRequest;
   onInput: (request: ExtensionCustomRequest, data: string) => void;
+  sideDock?: boolean;
+  onDockClose?: () => void;
 }) {
   const { t } = useI18n();
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -1292,31 +1356,37 @@ function ExtensionCustomPanel({
     <div
       style={{
         position: "absolute",
-        inset: 0,
+        ...(sideDock ? { inset: "0 0 0 auto", width: "min(440px, 100%)" } : { inset: 0 }),
         zIndex: 95,
         display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: 20,
-        background: "rgba(0,0,0,0.18)",
+        alignItems: sideDock ? "stretch" : "center",
+        justifyContent: sideDock ? "stretch" : "center",
+        padding: sideDock ? 0 : 20,
+        background: sideDock ? "var(--bg)" : "rgba(0,0,0,0.18)",
+        borderLeft: sideDock ? "1px solid var(--border)" : undefined,
+        boxShadow: sideDock ? "-18px 0 48px rgba(0,0,0,0.12)" : undefined,
       }}
     >
       <div
         role="dialog"
-        aria-modal="true"
+        aria-modal={!sideDock}
+        className={sideDock ? "codex-side-chat-panel" : undefined}
         onClick={(event) => {
           if (!(event.target as HTMLElement).closest("button")) inputRef.current?.focus();
         }}
         style={{
           position: "relative",
-          width: "min(920px, 100%)",
-          maxHeight: "min(760px, calc(100vh - 40px))",
-          border: "1px solid var(--border)",
-          borderRadius: 8,
+          width: sideDock ? "100%" : "min(920px, 100%)",
+          height: sideDock ? "100%" : undefined,
+          maxHeight: sideDock ? "none" : "min(760px, calc(100vh - 40px))",
+          border: sideDock ? "none" : "1px solid var(--border)",
+          borderRadius: sideDock ? 0 : 8,
           background: "var(--bg)",
-          boxShadow: "0 20px 60px rgba(0,0,0,0.28)",
+          boxShadow: sideDock ? "none" : "0 20px 60px rgba(0,0,0,0.28)",
           overflow: "hidden",
           outline: "none",
+          display: sideDock ? "flex" : undefined,
+          flexDirection: sideDock ? "column" : undefined,
         }}
       >
         <textarea
@@ -1332,6 +1402,10 @@ function ExtensionCustomPanel({
             if (!data) return;
             event.preventDefault();
             event.stopPropagation();
+            if (sideDock && data === "\x1b") {
+              onDockClose?.();
+              return;
+            }
             onInput(request, data);
           }}
           onInput={(event) => {
@@ -1368,9 +1442,9 @@ function ExtensionCustomPanel({
           }}
         />
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "10px 12px", borderBottom: "1px solid var(--border)" }}>
-           <div style={{ color: "var(--text)", fontSize: 13, fontWeight: 650 }}>{t("chat.extensionPanel")}</div>
+           <div style={{ color: "var(--text)", fontSize: 13, fontWeight: 650 }}>{t(sideDock ? "chat.sideChat" : "chat.extensionPanel")}</div>
           <button
-            onClick={() => onInput(request, "\x03")}
+            onClick={() => sideDock ? onDockClose?.() : onInput(request, "\x03")}
             style={{
               padding: "5px 9px",
               borderRadius: 6,
@@ -1388,7 +1462,8 @@ function ExtensionCustomPanel({
           style={{
             margin: 0,
             padding: 14,
-            maxHeight: "calc(min(760px, 100vh - 40px) - 48px)",
+            maxHeight: sideDock ? "none" : "calc(min(760px, 100vh - 40px) - 48px)",
+            flex: sideDock ? 1 : undefined,
             overflow: "auto",
             background: "var(--bg-panel)",
             color: "var(--text)",

@@ -307,6 +307,7 @@ export const zhCNLocale: LocalePlugin = {
     "chat.submit": "提交",
     "chat.extensionInput": "扩展终端输入",
     "chat.extensionPanel": "扩展面板",
+    "chat.sideChat": "侧边聊天",
     "chat.extensionWidgets": "扩展组件",
     "chat.extensionWidgetAbove": "输入框上方组件",
     "chat.extensionWidgetBelow": "输入框下方组件",
