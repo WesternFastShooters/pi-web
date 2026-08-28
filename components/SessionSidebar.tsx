@@ -13,6 +13,7 @@ import { formatRelativeTime } from "@/lib/i18n/format";
 import { useI18n } from "@/hooks/useI18n";
 import { DirectoryPicker } from "./DirectoryPicker";
 import { FileExplorer, type FileExplorerHandle } from "./FileExplorer";
+import { ProjectSidebarTree } from "./ProjectSidebarTree";
 
 declare global {
   interface Window {
@@ -979,7 +980,10 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
         style={{
           padding: "12px 10px 10px",
           borderBottom: "1px solid var(--border)",
-          flexShrink: 0,
+          flex: "1 1 auto",
+          minHeight: 0,
+          overflowY: "auto",
+          overflowX: "hidden",
         }}
       >
         <div className="codex-sidebar-brand-row" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
@@ -1101,6 +1105,32 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
             <span>{t("common.plugins")}</span>
           </button>
         </nav>
+
+        <ProjectSidebarTree
+          projects={recentProjects}
+          extraProject={selectedProject}
+          sessions={allSessions}
+          selectedSessionId={selectedSessionId}
+          selectedProjectKey={selectedProject?.key}
+          runningSessionIds={runningSessionIds}
+          unreadSessionIds={unreadSessionIds}
+          loading={loading}
+          error={error}
+          onAddProject={handleCustomPathClick}
+          onSelectProject={(project) => setSelectedCwd(project.root)}
+          onNewSession={handleNewSessionForCwd}
+          onSelectSession={handleSelectSessionFromList}
+          onRefreshSessions={loadSessions}
+          onSessionDeleted={onSessionDeleted}
+          renderSession={(session, options) => (
+            <SessionItem
+              key={session.id}
+              session={session}
+              compact
+              {...options}
+            />
+          )}
+        />
 
         <div className="codex-sidebar-section-label" style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <span>{t("sidebar.projects")}</span>
@@ -1402,7 +1432,7 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
                 (w.branch ?? displayCwd(w.path, homeDir)).toLowerCase().includes(wtFilter.trim().toLowerCase()))
             : worktreeState.worktrees;
           return (
-            <div ref={wtDropdownRef} style={{ position: "relative", marginTop: 6 }}>
+            <div ref={wtDropdownRef} className="codex-worktree-switcher" style={{ position: "relative", marginTop: 6 }}>
               <button
                 onClick={() => setWtDropdownOpen((v) => !v)}
                  title={currentWorktree ? t("sidebar.switchWorktreeTitle", { path: currentWorktree.path }) : t("sidebar.switchWorktree")}
@@ -2037,6 +2067,9 @@ function SessionItem({
   hasChildren = false,
   collapsed = false,
   onToggleCollapse,
+  compact = false,
+  draggable = false,
+  onDragStart,
 }: {
   session: SessionInfo;
   isSelected: boolean;
@@ -2049,6 +2082,9 @@ function SessionItem({
   hasChildren?: boolean;
   collapsed?: boolean;
   onToggleCollapse?: () => void;
+  compact?: boolean;
+  draggable?: boolean;
+  onDragStart?: (event: React.DragEvent<HTMLDivElement>) => void;
 }) {
   const { locale, t } = useI18n();
   const [hovered, setHovered] = useState(false);
@@ -2146,7 +2182,7 @@ function SessionItem({
   }, [onRenamed, session.cwd, session.id, session.name, session.path, session.transient]);
 
   // Fixed-height outer wrapper — content swaps in place so the list never reflows
-  const ITEM_HEIGHT = 54;
+  const ITEM_HEIGHT = compact ? 36 : 54;
 
   return (
     <>
@@ -2157,11 +2193,13 @@ function SessionItem({
       onContextMenu={handleContextMenu}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => { setHovered(false); }}
+      draggable={draggable}
+      onDragStart={onDragStart}
       style={{
         height: ITEM_HEIGHT,
         display: "flex",
         alignItems: "center",
-        paddingLeft: depth > 0 ? depth * 12 + 14 : 14,
+        paddingLeft: compact ? 42 : depth > 0 ? depth * 12 + 14 : 14,
         paddingRight: 8,
         cursor: "pointer",
         background: isSelected ? "var(--bg-selected)" : hovered ? "var(--bg-hover)" : "transparent",
@@ -2222,7 +2260,7 @@ function SessionItem({
                 {title}
               </span>
             </div>
-            <div style={{ marginTop: 2, display: "flex", alignItems: "center", gap: 8, color: "var(--text-dim)", fontSize: 11, minWidth: 0 }}>
+            {!compact && <div style={{ marginTop: 2, display: "flex", alignItems: "center", gap: 8, color: "var(--text-dim)", fontSize: 11, minWidth: 0 }}>
               {isRunning ? (
                 <RunningSessionIndicator />
               ) : isUnread ? (
@@ -2245,7 +2283,7 @@ function SessionItem({
                   <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{session.branch}</span>
                 </span>
               )}
-            </div>
+            </div>}
           </div>
 
           {/* Collapse toggle — always visible when has children */}
