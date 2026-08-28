@@ -2010,16 +2010,6 @@ export function AppShell() {
               )}
             </div>
           )}
-          {!isMobile && (
-            <div className="codex-topbar-desktop-tools">
-              <div className="codex-legacy-toolbar">
-                {renderProjectTrustWarning(false)}
-                {renderChatToolbarActions(false)}
-              </div>
-              {renderSessionStatsButton(false)}
-            </div>
-          )}
-          {!isMobile && renderTerminalToggle()}
           {!isMobile && renderSummaryToggle(false)}
           {!isMobile && fileTabs.length > 0 && renderMainFileToggle(false)}
           {isMobile && sessionHasBranches && (
