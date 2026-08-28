@@ -1031,8 +1031,8 @@ export function AppShell() {
           onMouseEnter={(event) => { event.currentTarget.style.background = "var(--bg-hover)"; event.currentTarget.style.color = "var(--text)"; }}
           onMouseLeave={(event) => { event.currentTarget.style.background = "none"; event.currentTarget.style.color = "var(--text-muted)"; }}
         >
-          <span className="codex-profile-avatar">P</span>
-          <span>Pi</span>
+          <span className="codex-profile-avatar" aria-hidden="true">π</span>
+          <span className="codex-profile-name">Pi</span>
           <SettingsSectionIcon section="general" size={14} strokeWidth={2} />
         </button>
       </div>

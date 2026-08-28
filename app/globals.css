@@ -1284,7 +1284,7 @@ pre, code {
 }
 
 .codex-sidebar-footer {
-  border-top: 0.5px solid var(--border);
+  position: relative;
 }
 
 .codex-sidebar-footer button > svg:last-child {
@@ -1293,15 +1293,28 @@ pre, code {
 
 .codex-profile-avatar {
   display: inline-flex;
-  width: 24px;
-  height: 24px;
+  width: 26px;
+  height: 26px;
+  flex: 0 0 26px;
   align-items: center;
   justify-content: center;
+  border: 0.5px solid var(--border-strong);
   border-radius: 999px;
-  background: #101010;
+  background: linear-gradient(145deg, #181818, #050505);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.35), inset 0 0.5px rgba(255, 255, 255, 0.14);
   color: #fff;
-  font-size: 11px;
-  font-weight: 600;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 15px;
+  line-height: 1;
+}
+
+.codex-profile-name {
+  overflow: hidden;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .codex-recents-label {
@@ -1347,13 +1360,26 @@ pre, code {
 }
 
 .codex-sidebar-footer {
-  margin: 0 8px 6px;
-  padding: 5px 0 0 !important;
+  margin: 0 8px 8px;
+  padding: 4px 0 0 !important;
   border-top: 0.5px solid var(--border);
 }
 
 .codex-sidebar-footer button {
+  height: 42px !important;
+  padding-inline: 7px 9px !important;
   border-radius: var(--radius-md) !important;
+  color: var(--text-muted) !important;
+}
+
+.codex-sidebar-footer button:hover {
+  background: var(--bg-hover) !important;
+  color: var(--text) !important;
+}
+
+.codex-sidebar-footer button:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--accent) 65%, transparent);
+  outline-offset: 1px;
 }
 
 .codex-composer-dock {
