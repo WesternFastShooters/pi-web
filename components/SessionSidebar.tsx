@@ -960,7 +960,7 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
   const sessionFamilies = listSessionFamilies(filteredSessions);
 
   return (
-    <div className="codex-session-sidebar" style={{ display: "flex", flexDirection: "column", height: "100%", overflow: "hidden" }}>
+    <div className="codex-session-sidebar" style={{ display: "flex", flexDirection: "column", flex: "1 1 0", minHeight: 0, overflow: "hidden" }}>
       {customPathOpen && (
         <DirectoryPicker
           initialPath={customPathValue}

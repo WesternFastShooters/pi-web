@@ -1360,15 +1360,21 @@ pre, code {
 }
 
 .codex-sidebar-footer {
-  margin: 0 8px 8px;
+  width: calc(var(--sidebar-width, var(--spacing-token-sidebar)) - 24px) !important;
+  min-width: 0 !important;
+  margin: 0 12px 8px;
   padding: 4px 0 0 !important;
-  border-top: 0.5px solid var(--border);
+  overflow: visible;
+  border-top: 0;
 }
 
 .codex-sidebar-footer button {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
   height: 42px !important;
   padding-inline: 7px 9px !important;
-  border-radius: var(--radius-md) !important;
+  border-radius: var(--radius-lg) !important;
   color: var(--text-muted) !important;
 }
 
@@ -1379,7 +1385,7 @@ pre, code {
 
 .codex-sidebar-footer button:focus-visible {
   outline: 2px solid color-mix(in srgb, var(--accent) 65%, transparent);
-  outline-offset: 1px;
+  outline-offset: -2px;
 }
 
 .codex-composer-dock {
