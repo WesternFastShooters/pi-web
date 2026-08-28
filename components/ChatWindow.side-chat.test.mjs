@@ -10,8 +10,9 @@ test("exposes pi-btw as a side chat launcher", () => {
   assert.match(source, /handleSend\("\/btw"\)/);
   assert.match(source, /chat\.sideChat/);
   assert.doesNotMatch(source, /codex-side-chat-launcher/);
-  assert.match(appShellSource, /renderSideChatToggle/);
-  assert.match(appShellSource, /marginLeft: !mobile \? "auto"/);
+  assert.doesNotMatch(appShellSource, /renderSideChatToggle/);
+  assert.match(appShellSource, /className="codex-side-panel-launcher"/);
+  assert.match(appShellSource, /translate\("chat\.sideChat"\)/);
 });
 
 test("docks the pi-btw custom UI without changing generic extension dialogs", () => {

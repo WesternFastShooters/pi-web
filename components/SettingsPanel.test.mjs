@@ -15,7 +15,7 @@ test("opens one settings panel from direct sidebar shortcuts", () => {
   assert.match(shellSource, /setSettingsSection\(section\)/);
   assert.match(shellSource, /initialSection=\{settingsSection\}/);
   assert.match(shellSource, /translate\("common\.settings"\)/);
-  assert.match(shellSource, /<SettingsSectionIcon section="general" size=\{14\} strokeWidth=\{2\} \/>/);
+  assert.doesNotMatch(shellSource, /<SettingsSectionIcon section="general" size=\{14\} strokeWidth=\{2\} \/>/);
   assert.match(sidebarSource, /onOpenSettings\?\.\("models"\)/);
   assert.match(sidebarSource, /onOpenSettings\?\.\("skills"\)/);
   assert.match(sidebarSource, /onOpenSettings\?\.\("plugins"\)/);

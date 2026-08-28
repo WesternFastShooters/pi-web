@@ -8,7 +8,7 @@ import { ChatWindow } from "./ChatWindow";
 import { FileViewer } from "./FileViewer";
 import { TabBar, type Tab } from "./TabBar";
 import { openFileTab, saveFileViewerState } from "./file-tab-state";
-import { SettingsPanel, SettingsSectionIcon } from "./SettingsPanel";
+import { SettingsPanel } from "./SettingsPanel";
 import { ProjectTrustDialog } from "./ProjectTrustDialog";
 import { BranchNavigator, hasSessionBranches } from "./BranchNavigator";
 import { SystemPromptPanel } from "./SystemPromptPanel";
@@ -140,7 +140,6 @@ export function AppShell() {
   const [rightPanelOpen, setRightPanelOpen] = useState(false);
   const [summaryOpen, setSummaryOpen] = useState(false);
   const [sideChatAvailable, setSideChatAvailable] = useState(false);
-  const [sideChatOpen, setSideChatOpen] = useState(false);
   const [sideChatToggleKey, setSideChatToggleKey] = useState(0);
   const [terminalOpen, setTerminalOpen] = useState(false);
   const [mobileToolbarMoreOpen, setMobileToolbarMoreOpen] = useState(false);
@@ -1059,7 +1058,6 @@ export function AppShell() {
         >
           <span className="codex-profile-avatar" aria-hidden="true">π</span>
           <span className="codex-profile-name">Pi</span>
-          <SettingsSectionIcon section="general" size={14} strokeWidth={2} />
         </button>
       </div>
     </>
@@ -1206,30 +1204,10 @@ export function AppShell() {
     );
   };
 
-  const renderSideChatToggle = () => {
-    if (!sideChatAvailable) return null;
-    return (
-      <button
-        type="button"
-        onClick={() => setSideChatToggleKey((key) => key + 1)}
-        aria-expanded={sideChatOpen}
-        title={translate("chat.sideChat")}
-        aria-label={translate("chat.sideChat")}
-        style={{
-          display: "flex", alignItems: "center", justifyContent: "center",
-          width: TOP_BAR_ICON_BUTTON_SIZE, height: TOP_BAR_ICON_BUTTON_SIZE, padding: 0,
-          background: sideChatOpen ? "var(--bg-selected)" : "none",
-          border: "none", borderLeft: "1px solid var(--border)",
-          color: sideChatOpen ? "var(--text)" : "var(--text-muted)",
-          cursor: "pointer", flexShrink: 0, transition: "color 0.12s, background 0.12s",
-        }}
-      >
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-          <path d="M21 12a8 8 0 0 1-8 8H6l-4 2 1.5-4A9 9 0 1 1 21 12Z" />
-          <path d="M8 12h8M12 8v8" />
-        </svg>
-      </button>
-    );
+  const handleSideChatLaunch = () => {
+    if (!sideChatAvailable) return;
+    setSideChatToggleKey((key) => key + 1);
+    setRightPanelOpen(false);
   };
 
   const renderChatToolbarActions = (mobile: boolean) => {
@@ -2014,8 +1992,7 @@ export function AppShell() {
               {renderSessionStatsButton(true)}
               {renderTerminalToggle()}
               {renderSummaryToggle(true)}
-              {renderSideChatToggle()}
-              {fileTabs.length > 0 && renderMainFileToggle(true)}
+              {renderMainFileToggle(true)}
               {isNarrowMobile && mobileToolbarMoreOpen && (
                 <div
                   id="mobile-toolbar-actions"
@@ -2042,8 +2019,8 @@ export function AppShell() {
             </div>
           )}
           {!isMobile && renderSummaryToggle(false)}
-          {!isMobile && renderSideChatToggle()}
-          {!isMobile && fileTabs.length > 0 && renderMainFileToggle(false)}
+          {!isMobile && renderTerminalToggle()}
+          {!isMobile && renderMainFileToggle(false)}
           {isMobile && sessionHasBranches && (
             <BranchNavigator
               tree={branchTree}
@@ -2372,7 +2349,6 @@ export function AppShell() {
               onContextUsageChange={handleContextUsageChange}
               sideChatToggleKey={sideChatToggleKey}
               onSideChatAvailabilityChange={setSideChatAvailable}
-              onSideChatOpenChange={setSideChatOpen}
               onOpenFile={handleOpenLinkedFile}
               onOpenSession={handleOpenSession}
               soundEnabled={soundEnabled}
@@ -2491,7 +2467,7 @@ export function AppShell() {
         } as React.CSSProperties}
       >
         {/* Right panel tab bar */}
-        {fileTabs.length > 0 && <div className="codex-detail-header" style={{
+        {fileTabs.length > 0 ? <div className="codex-detail-header" style={{
           display: "flex",
           alignItems: "center",
           flexShrink: 0,
@@ -2528,6 +2504,17 @@ export function AppShell() {
               <rect x="3" y="3" width="18" height="18" rx="2" /><line x1="15" y1="3" x2="15" y2="21" />
             </svg>
           </button>
+        </div> : <div className="codex-detail-header codex-side-panel-header">
+          <span>{activeCwd?.split("/").filter(Boolean).pop() ?? "Pi"} - Pi</span>
+          <button type="button" aria-label={translate("sidebar.new")} title={translate("sidebar.new")}>＋</button>
+          <button
+            type="button"
+            onClick={() => setRightPanelOpen(false)}
+            aria-label={translate("files.hidePanel")}
+            title={translate("files.hidePanel")}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="15" y1="3" x2="15" y2="21"/></svg>
+          </button>
         </div>}
 
         {/* Only the active viewer is mounted. Lightweight per-tab state is restored on activation. */}
@@ -2556,8 +2543,38 @@ export function AppShell() {
               )}
             />
           ) : (
-            <div style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-dim)", fontSize: 12 }}>
-              {translate("files.noneOpen")}
+            <div className="codex-side-panel-home">
+              <div className="codex-side-panel-launchers">
+                <button
+                  type="button"
+                  className="codex-side-panel-launcher"
+                  disabled={!sideChatAvailable}
+                  onClick={handleSideChatLaunch}
+                >
+                  <span className="codex-side-panel-launcher-icon" aria-hidden="true">⊕</span>
+                  <span>{translate("chat.sideChat")}</span>
+                  <kbd>⌥⌘S</kbd>
+                </button>
+                <button type="button" className="codex-side-panel-launcher" disabled>
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a15 15 0 0 1 0 18M12 3a15 15 0 0 0 0 18"/></svg>
+                  <span>{translate("sidePanel.browser")}</span>
+                  <kbd>⌘T</kbd>
+                </button>
+                <button type="button" className="codex-side-panel-launcher" onClick={() => setTerminalOpen((open) => !open)}>
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="m7 9 3 3-3 3M13 15h4"/></svg>
+                  <span>{translate("terminal.title")}</span>
+                  <kbd>⌃`</kbd>
+                </button>
+              </div>
+              {activeCwd ? (
+                <div className="codex-side-panel-recommendations">
+                  <div>{translate("sidePanel.recommended")}</div>
+                  <button type="button" disabled>
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a15 15 0 0 1 0 18M12 3a15 15 0 0 0 0 18"/></svg>
+                    <span>127.0.0.1:30141</span>
+                  </button>
+                </div>
+              ) : null}
             </div>
           )}
         </div>

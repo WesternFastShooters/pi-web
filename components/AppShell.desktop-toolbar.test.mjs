@@ -4,11 +4,12 @@ import test from "node:test";
 
 const source = readFileSync(new URL("./AppShell.tsx", import.meta.url), "utf8");
 
-test("hides legacy session actions from the desktop top bar", () => {
+test("keeps the Codex panel controls in the desktop top bar", () => {
   assert.doesNotMatch(source, /className="codex-legacy-toolbar"/);
   assert.doesNotMatch(source, /renderSessionStatsButton\(false\)/);
-  assert.doesNotMatch(source, /!isMobile && renderTerminalToggle\(\)/);
+  assert.match(source, /!isMobile && renderTerminalToggle\(\)/);
   assert.match(source, /!isMobile && renderSummaryToggle\(false\)/);
+  assert.match(source, /!isMobile && renderMainFileToggle\(false\)/);
 });
 
 test("keeps compact controls available on mobile", () => {

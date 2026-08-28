@@ -37,7 +37,20 @@ test("renders the summary as a toolbar popover instead of the file side panel", 
   assert.doesNotMatch(fileContentBlock(), /codex-activity-overview/);
 });
 
-test("keeps the file side panel closed until a file is opened", () => {
+test("keeps the side panel available before a file is opened", () => {
   assert.match(source, /const \[rightPanelOpen, setRightPanelOpen\] = useState\(false\)/);
-  assert.match(source, /fileTabs\.length > 0 && renderMainFileToggle/);
+  assert.doesNotMatch(source, /fileTabs\.length > 0 && renderMainFileToggle/);
+  assert.match(source, /renderMainFileToggle\(false\)/);
+  assert.match(source, /className="codex-side-panel-home"/);
+});
+
+test("renders independent desktop bottom and side panel controls", () => {
+  const desktopToolbar = source.slice(
+    source.indexOf("{!isMobile && renderSummaryToggle(false)}"),
+    source.indexOf("{isMobile && sessionHasBranches"),
+  );
+  assert.match(desktopToolbar, /renderTerminalToggle\(\)/);
+  assert.match(desktopToolbar, /renderMainFileToggle\(false\)/);
+  assert.match(source, /aria-controls="terminal-panel"/);
+  assert.match(source, /aria-controls="file-panel"/);
 });
