@@ -1,9 +1,8 @@
 "use client";
 import { registerAbortHandler } from "@/hooks/useKeyboardShortcuts";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { createPortal } from "react-dom";
 import type { AgentMessage, AssistantContentBlock, AssistantMessage, BashExecutionMessage, BlockingExtensionUiRequest, CustomMessage, ExtensionUiRequest, SessionInfo, SessionTreeNode, ToolResultMessage, UserMessage } from "@/lib/types";
-import { normalizeCustomPanelLines } from "@/lib/ansi";
+import { normalizeCustomPanelLines, stripAnsi } from "@/lib/ansi";
 import { asBracketedPaste, toTerminalKeyData } from "@/lib/terminal-input";
 import { countToolCallBlocks, getAssistantErrorMessage, getDisplayableAssistantBlocks, splitFinalAssistantBlocks } from "@/lib/message-display";
 import { extractTurnWrittenFiles, type WrittenFile } from "@/lib/turn-written-files";
@@ -47,7 +46,7 @@ interface Props {
   onSessionStatsPanelOpen?: () => void;
   onContextUsageChange?: (usage: { percent: number | null; contextWindow: number; tokens: number | null } | null) => void;
   sideChatToggleKey?: number;
-  sideChatHost?: HTMLElement | null;
+  onSideChatControllerChange?: (controller: SideChatController | null) => void;
   onSideChatAvailabilityChange?: (available: boolean) => void;
   onSideChatOpenChange?: (open: boolean) => void;
   onOpenFile?: (filePath: string) => void;
@@ -267,7 +266,7 @@ function ProcessDetailsGroup({ messageCount, toolCallCount, defaultExpanded = fa
   );
 }
 
-export function ChatWindow({ session, sessionRunning, newSessionCwd, newSessionDraftKey, onAgentEnd, onAttentionNeeded, onSessionCreated, onSessionForked, modelsRefreshKey, chatInputRef, onBranchDataChange, onSystemPromptChange, onSystemToolsChange, onSystemInfoLoaderChange, onSessionStatsChange, onSessionStatsPanelOpen, onContextUsageChange, sideChatToggleKey = 0, sideChatHost, onSideChatAvailabilityChange, onSideChatOpenChange, onOpenFile, onOpenSession, soundEnabled = true, onSoundToggle, playDoneSound = () => {}, unlockAudio, terminalOpen = false, onTerminalClose }: Props) {
+export function ChatWindow({ session, sessionRunning, newSessionCwd, newSessionDraftKey, onAgentEnd, onAttentionNeeded, onSessionCreated, onSessionForked, modelsRefreshKey, chatInputRef, onBranchDataChange, onSystemPromptChange, onSystemToolsChange, onSystemInfoLoaderChange, onSessionStatsChange, onSessionStatsPanelOpen, onContextUsageChange, sideChatToggleKey = 0, onSideChatControllerChange, onSideChatAvailabilityChange, onSideChatOpenChange, onOpenFile, onOpenSession, soundEnabled = true, onSoundToggle, playDoneSound = () => {}, unlockAudio, terminalOpen = false, onTerminalClose }: Props) {
   const { t } = useI18n();
   const isMobile = useIsMobile();
   const completionNotificationsEnabled = session?.relation?.kind !== "subagent";
@@ -369,6 +368,38 @@ export function ChatWindow({ session, sessionRunning, newSessionCwd, newSessionD
   useEffect(() => {
     onSideChatOpenChange?.(btwSideChatOpen);
   }, [btwSideChatOpen, onSideChatOpenChange]);
+
+  const closeSideChat = useCallback(() => setBtwSideChatExpanded(false), []);
+  const sideChatModelLabel = useMemo(() => {
+    if (!displayModelValue) return "Pi";
+    const listedModel = modelList.find((model) => (
+      model.provider === displayModelValue.provider && model.id === displayModelValue.modelId
+    ));
+    return listedModel?.name
+      ?? modelNames[`${displayModelValue.provider}:${displayModelValue.modelId}`]
+      ?? modelNames[displayModelValue.modelId]
+      ?? displayModelValue.modelId;
+  }, [displayModelValue, modelList, modelNames]);
+  const sideChatController = useMemo<SideChatController | null>(() => (
+    btwSideChatOpen && btwSideChatRequest
+      ? {
+          request: btwSideChatRequest,
+          onInput: sendExtensionCustomInput,
+          onClose: closeSideChat,
+          modelLabel: sideChatModelLabel,
+        }
+      : null
+  ), [btwSideChatOpen, btwSideChatRequest, closeSideChat, sendExtensionCustomInput, sideChatModelLabel]);
+  const sideChatControllerChangeRef = useRef(onSideChatControllerChange);
+  sideChatControllerChangeRef.current = onSideChatControllerChange;
+
+  useEffect(() => {
+    onSideChatControllerChange?.(sideChatController);
+  }, [onSideChatControllerChange, sideChatController]);
+
+  useEffect(() => () => {
+    sideChatControllerChangeRef.current?.(null);
+  }, []);
 
   const handledSideChatToggleKeyRef = useRef(sideChatToggleKey);
   useEffect(() => {
@@ -730,23 +761,11 @@ export function ChatWindow({ session, sessionRunning, newSessionCwd, newSessionD
         />
       )}
 
-      {customUiToRender && !btwSideChatHidden && (
-        isBtwCustomRequest(customUiToRender) ? (
-          sideChatHost ? createPortal(
-            <ExtensionCustomPanel
-              request={customUiToRender}
-              onInput={sendExtensionCustomInput}
-              sideDock
-              onDockClose={() => setBtwSideChatExpanded(false)}
-            />,
-            sideChatHost,
-          ) : null
-        ) : (
-          <ExtensionCustomPanel
-            request={customUiToRender}
-            onInput={sendExtensionCustomInput}
-          />
-        )
+      {customUiToRender && !isBtwCustomRequest(customUiToRender) && (
+        <ExtensionCustomPanel
+          request={customUiToRender}
+          onInput={sendExtensionCustomInput}
+        />
       )}
 
       <div
@@ -1342,31 +1361,88 @@ function ExtensionDialog({
 
 type ExtensionCustomRequest = Extract<ExtensionUiRequest, { method: "custom" }>;
 
-function ExtensionCustomPanel({
+type SideChatTranscriptEntry = {
+  role: "user" | "assistant" | "thinking" | "tool";
+  content: string;
+};
+
+export function parseSideChatTranscript(lines: string[]): SideChatTranscriptEntry[] {
+  const normalized = normalizeCustomPanelLines(lines);
+  const transcriptLines = normalized.length >= 5 ? normalized.slice(2, -3) : [];
+  const entries: SideChatTranscriptEntry[] = [];
+  let current: SideChatTranscriptEntry | null = null;
+
+  const flush = () => {
+    if (current?.content.trim()) entries.push({ ...current, content: current.content.trim() });
+    current = null;
+  };
+
+  for (const ansiLine of transcriptLines) {
+    const line = stripAnsi(ansiLine).trimEnd();
+    if (/^\s*[─━-]{8,}\s*$/.test(line)) {
+      flush();
+      continue;
+    }
+    const header = line.trimStart().match(/^(You|Assistant|Thinking|Tool)\b\s*(.*)$/);
+    if (header) {
+      flush();
+      const role = header[1] === "You"
+        ? "user"
+        : header[1].toLowerCase() as SideChatTranscriptEntry["role"];
+      current = { role, content: header[2].replace(/^▍\s*/, "") };
+      continue;
+    }
+    if (!current) continue;
+    const continuation = line.replace(/^\s{4}/, "");
+    current.content += `${current.content ? "\n" : ""}${continuation}`;
+  }
+  flush();
+  return entries;
+}
+
+export interface SideChatController {
+  request: ExtensionCustomRequest;
+  onInput: (request: ExtensionCustomRequest, data: string) => void;
+  onClose: () => void;
+  modelLabel: string;
+}
+
+export function ExtensionCustomPanel({
   request,
   onInput,
   sideDock = false,
   onDockClose,
+  modelLabel = "Pi",
 }: {
   request: ExtensionCustomRequest;
   onInput: (request: ExtensionCustomRequest, data: string) => void;
   sideDock?: boolean;
   onDockClose?: () => void;
+  modelLabel?: string;
 }) {
   const { t } = useI18n();
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const transcriptRef = useRef<HTMLDivElement>(null);
   const composingRef = useRef(false);
+  const [draft, setDraft] = useState("");
   const displayLines = normalizeCustomPanelLines(request.lines);
+  const sideChatEntries = sideDock ? parseSideChatTranscript(request.lines) : [];
 
   useEffect(() => {
     inputRef.current?.focus();
   }, [request.id]);
 
+  useLayoutEffect(() => {
+    if (!sideDock) return;
+    const transcript = transcriptRef.current;
+    if (transcript) transcript.scrollTop = transcript.scrollHeight;
+  }, [request.lines, sideDock]);
+
   return (
     <div
       style={{
-        position: "absolute",
-        ...(sideDock ? { inset: "0 0 0 auto", width: "min(440px, 100%)" } : { inset: 0 }),
+        position: sideDock ? "relative" : "absolute",
+        ...(sideDock ? { width: "100%", height: "100%", minWidth: 0 } : { inset: 0 }),
         zIndex: 95,
         display: "flex",
         alignItems: sideDock ? "stretch" : "center",
@@ -1374,7 +1450,6 @@ function ExtensionCustomPanel({
         padding: sideDock ? 0 : 20,
         background: sideDock ? "var(--bg)" : "rgba(0,0,0,0.18)",
         borderLeft: sideDock ? "1px solid var(--border)" : undefined,
-        boxShadow: sideDock ? "-18px 0 48px rgba(0,0,0,0.12)" : undefined,
       }}
     >
       <div
@@ -1399,9 +1474,9 @@ function ExtensionCustomPanel({
           flexDirection: sideDock ? "column" : undefined,
         }}
       >
-        <textarea
+        {!sideDock ? <textarea
           ref={inputRef}
-           aria-label={t("chat.extensionInput")}
+          aria-label={t("chat.extensionInput")}
           autoCapitalize="off"
           autoComplete="off"
           autoCorrect="off"
@@ -1412,10 +1487,6 @@ function ExtensionCustomPanel({
             if (!data) return;
             event.preventDefault();
             event.stopPropagation();
-            if (sideDock && data === "\x1b") {
-              onDockClose?.();
-              return;
-            }
             onInput(request, data);
           }}
           onInput={(event) => {
@@ -1450,7 +1521,7 @@ function ExtensionCustomPanel({
             opacity: 0,
             pointerEvents: "none",
           }}
-        />
+        /> : null}
         {!sideDock ? (
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "10px 12px", borderBottom: "1px solid var(--border)" }}>
             <div style={{ color: "var(--text)", fontSize: 13, fontWeight: 650 }}>{t("chat.extensionPanel")}</div>
@@ -1470,12 +1541,30 @@ function ExtensionCustomPanel({
             </button>
           </div>
         ) : null}
-        <pre
+        {sideDock ? (
+          <div ref={transcriptRef} className="codex-side-chat-transcript" aria-live="polite">
+            {sideChatEntries.map((entry, index) => (
+              <div
+                key={`${entry.role}-${index}`}
+                className={`codex-side-chat-message codex-side-chat-message-${entry.role}`}
+              >
+                {entry.role === "thinking" || entry.role === "tool" ? (
+                  <div className="codex-side-chat-message-label">
+                    {entry.role === "thinking" ? t("chat.sideChatThinking") : t("chat.sideChatTool")}
+                  </div>
+                ) : null}
+                <div className="codex-side-chat-message-content">{entry.content}</div>
+              </div>
+            ))}
+          </div>
+        ) : <pre
           style={{
             margin: 0,
             padding: 14,
             maxHeight: sideDock ? "none" : "calc(min(760px, 100vh - 40px) - 48px)",
             flex: sideDock ? 1 : undefined,
+            minHeight: sideDock ? 0 : undefined,
+            width: "100%",
             overflow: "auto",
             background: "var(--bg-panel)",
             color: "var(--text)",
@@ -1487,6 +1576,62 @@ function ExtensionCustomPanel({
         >
           <AnsiText text={displayLines.join("\n")} />
         </pre>
+        }
+        {sideDock ? (
+          <form
+            className="codex-side-chat-composer"
+            onSubmit={(event) => {
+              event.preventDefault();
+              if (!draft.trim()) return;
+              onInput(request, `${asBracketedPaste(draft)}\r`);
+              setDraft("");
+            }}
+          >
+            <textarea
+              ref={inputRef}
+              className="codex-side-chat-sender"
+              aria-label={t("chat.sideChatInput")}
+              placeholder={t("chat.sideChatPlaceholder")}
+              value={draft}
+              onChange={(event) => setDraft(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Escape") {
+                  event.preventDefault();
+                  onDockClose?.();
+                  return;
+                }
+                if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) {
+                  event.preventDefault();
+                  event.currentTarget.form?.requestSubmit();
+                }
+              }}
+              rows={2}
+            />
+            <div className="codex-side-chat-composer-toolbar">
+              <button type="button" className="codex-side-chat-toolbar-button" aria-label={t("chat.attachImage")} disabled>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
+              </button>
+              <span className="codex-side-chat-access">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path d="M12 3 5 6v5c0 4.6 2.8 8.2 7 10 4.2-1.8 7-5.4 7-10V6l-7-3Z"/><path d="m9.5 12 1.7 1.7 3.6-3.8"/></svg>
+                {t("chat.fullAccess")}
+              </span>
+              <span className="codex-side-chat-toolbar-spacer" />
+              <span className="codex-side-chat-context-ring" aria-hidden="true" />
+              <span className="codex-side-chat-model">{modelLabel}</span>
+              <span className="codex-side-chat-mic" aria-hidden="true">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3M9 21h6"/></svg>
+              </span>
+            </div>
+            <button
+              type="submit"
+              className="codex-side-chat-send"
+              aria-label={t("chat.submit")}
+              disabled={!draft.trim()}
+            >
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m12 19V5m-6 6 6-6 6 6"/></svg>
+            </button>
+          </form>
+        ) : null}
       </div>
     </div>
   );

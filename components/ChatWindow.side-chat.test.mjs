@@ -14,25 +14,35 @@ test("exposes pi-btw as a side chat launcher", () => {
   assert.match(appShellSource, /translate\("chat\.sideChat"\)/);
 });
 
-test("docks the pi-btw custom UI without changing generic extension dialogs", () => {
+test("exposes pi-btw state without portaling its view out of the chat tree", () => {
   assert.match(source, /function isBtwCustomRequest/);
   assert.match(source, /codex-side-chat-panel/);
-  assert.match(source, /isBtwCustomRequest\(customUiToRender\) \? \(/);
-  assert.match(source, /<ExtensionCustomPanel[\s\S]*?sideDock/);
-  assert.match(source, /createPortal/);
-  assert.match(source, /sideChatHost/);
+  assert.doesNotMatch(source, /createPortal/);
+  assert.doesNotMatch(source, /sideChatHost/);
+  assert.match(source, /onSideChatControllerChange/);
   assert.match(source, /aria-modal=\{!sideDock\}/);
   assert.match(source, /onDockClose/);
   assert.match(source, /setBtwSideChatExpanded/);
   assert.doesNotMatch(source, /paddingRight: btwSideChatOpen/);
 });
 
-test("mounts side chat as a right-panel tab instead of a third column", () => {
+test("renders side chat directly as responsive right-panel content", () => {
   assert.match(appShellSource, /const SIDE_CHAT_TAB_ID = "side-chat"/);
   assert.match(appShellSource, /label: translate\("chat\.sideChat"\)/);
   assert.match(appShellSource, /onSideChatOpenChange=\{handleSideChatOpenChange\}/);
-  assert.match(appShellSource, /sideChatHost=\{sideChatHost\}/);
-  assert.match(appShellSource, /ref=\{setSideChatHost\}/);
+  assert.match(appShellSource, /onSideChatControllerChange=\{setSideChatController\}/);
+  assert.match(appShellSource, /<ExtensionCustomPanel[\s\S]*?sideDock/);
+  assert.doesNotMatch(appShellSource, /setSideChatHost/);
   assert.match(appShellSource, /tabs=\{rightPanelTabs\}/);
   assert.match(appShellSource, /setRightPanelOpen\(true\)/);
+});
+
+test("side chat owns a visible sender instead of an invisible terminal input", () => {
+  assert.match(source, /className="codex-side-chat-composer"/);
+  assert.match(source, /className="codex-side-chat-sender"/);
+  assert.match(source, /asBracketedPaste\(draft\)/);
+  assert.match(source, /parseSideChatTranscript/);
+  assert.match(source, /\[─━-\]\{8,\}/);
+  assert.match(source, /codex-side-chat-message-\$\{entry\.role\}/);
+  assert.match(source, /normalized\.slice\(2, -3\)/);
 });

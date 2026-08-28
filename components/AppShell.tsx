@@ -4,7 +4,7 @@ import { useState, useCallback, useRef, useEffect, useLayoutEffect, useMemo } fr
 import { useRouter, useSearchParams } from "next/navigation";
 import { useGlobalKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
 import { SessionSidebar } from "./SessionSidebar";
-import { ChatWindow } from "./ChatWindow";
+import { ChatWindow, ExtensionCustomPanel, type SideChatController } from "./ChatWindow";
 import { FileViewer } from "./FileViewer";
 import { TabBar, type Tab } from "./TabBar";
 import { openFileTab, saveFileViewerState } from "./file-tab-state";
@@ -142,7 +142,7 @@ export function AppShell() {
   const [summaryOpen, setSummaryOpen] = useState(false);
   const [sideChatAvailable, setSideChatAvailable] = useState(false);
   const [sideChatOpen, setSideChatOpen] = useState(false);
-  const [sideChatHost, setSideChatHost] = useState<HTMLDivElement | null>(null);
+  const [sideChatController, setSideChatController] = useState<SideChatController | null>(null);
   const [sideChatToggleKey, setSideChatToggleKey] = useState(0);
   const [terminalOpen, setTerminalOpen] = useState(false);
   const [mobileToolbarMoreOpen, setMobileToolbarMoreOpen] = useState(false);
@@ -2384,7 +2384,7 @@ export function AppShell() {
               onSessionStatsPanelOpen={openSessionStatsPanel}
               onContextUsageChange={handleContextUsageChange}
               sideChatToggleKey={sideChatToggleKey}
-              sideChatHost={sideChatHost}
+              onSideChatControllerChange={setSideChatController}
               onSideChatAvailabilityChange={setSideChatAvailable}
               onSideChatOpenChange={handleSideChatOpenChange}
               onOpenFile={handleOpenLinkedFile}
@@ -2566,16 +2566,15 @@ export function AppShell() {
 
         {/* Only the active viewer is mounted. Lightweight per-tab state is restored on activation. */}
         <div style={{ flex: 1, minHeight: 0, overflow: "hidden", paddingBottom: "env(safe-area-inset-bottom)" }}>
-          <div
-            ref={setSideChatHost}
-            className="codex-side-chat-host"
-            style={{
-              display: activeFileTabId === SIDE_CHAT_TAB_ID ? "block" : "none",
-              position: "relative",
-              height: "100%",
-              overflow: "hidden",
-            }}
-          />
+          {activeFileTabId === SIDE_CHAT_TAB_ID && sideChatController ? (
+            <ExtensionCustomPanel
+              request={sideChatController.request}
+              onInput={sideChatController.onInput}
+              sideDock
+              onDockClose={sideChatController.onClose}
+              modelLabel={sideChatController.modelLabel}
+            />
+          ) : null}
           {activeFileTabId !== SIDE_CHAT_TAB_ID && activeFileTab?.filePath ? (
             <FileViewer
               key={`${activeFileTab.id}:${activeFileTab.viewerRevision ?? 0}`}

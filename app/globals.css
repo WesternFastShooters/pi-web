@@ -2714,3 +2714,173 @@ span.token.table {
     font-size: 16px !important;
   }
 }
+.codex-side-chat-transcript {
+  display: flex;
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  flex-direction: column;
+  gap: 22px;
+  overflow: auto;
+  padding: 28px 22px 20px;
+  background: var(--bg);
+}
+
+.codex-side-chat-message {
+  max-width: min(100%, 680px);
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.codex-side-chat-message-user {
+  align-self: flex-end;
+  max-width: min(84%, 520px);
+  padding: 10px 14px;
+  border-radius: 18px;
+  background: var(--bg-panel);
+}
+
+.codex-side-chat-message-assistant,
+.codex-side-chat-message-thinking,
+.codex-side-chat-message-tool {
+  align-self: stretch;
+}
+
+.codex-side-chat-message-thinking,
+.codex-side-chat-message-tool {
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--text-muted);
+}
+
+.codex-side-chat-message-label {
+  margin-bottom: 5px;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.codex-side-chat-message-content {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.codex-side-chat-composer {
+  position: relative;
+  flex: 0 0 auto;
+  margin: 12px;
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  background: color-mix(in oklab, var(--bg-selected) 78%, transparent);
+  box-shadow: var(--elevation-prominent);
+  backdrop-filter: blur(12px);
+}
+
+.codex-side-chat-sender {
+  display: block;
+  width: 100%;
+  min-height: 112px;
+  max-height: 220px;
+  resize: none;
+  overflow: auto;
+  padding: 16px 48px 48px 16px;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  line-height: 1.45;
+}
+
+.codex-side-chat-sender::placeholder {
+  color: var(--text-muted);
+}
+
+.codex-side-chat-send {
+  position: absolute;
+  right: 10px;
+  bottom: 9px;
+  display: grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  border: 0;
+  border-radius: 999px;
+  background: var(--text);
+  color: var(--bg);
+  cursor: pointer;
+}
+
+.codex-side-chat-composer-toolbar {
+  position: absolute;
+  left: 10px;
+  right: 50px;
+  bottom: 9px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.codex-side-chat-toolbar-button {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  place-items: center;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--text-muted);
+}
+
+.codex-side-chat-toolbar-button:disabled {
+  opacity: 1;
+}
+
+.codex-side-chat-access {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: #e8782d;
+  white-space: nowrap;
+}
+
+.codex-side-chat-toolbar-spacer {
+  flex: 1 1 auto;
+}
+
+.codex-side-chat-context-ring {
+  width: 15px;
+  height: 15px;
+  flex: 0 0 15px;
+  border: 2px solid var(--text-dim);
+  border-top-color: var(--text-muted);
+  border-radius: 999px;
+}
+
+.codex-side-chat-model {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text-muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.codex-side-chat-mic {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  flex: 0 0 28px;
+  place-items: center;
+  color: var(--text-muted);
+}
+
+.codex-side-chat-send:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
