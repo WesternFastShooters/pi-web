@@ -368,12 +368,14 @@ function UserMessageView({ message, cwd, onOpenFile, entryId, onFork, forking, o
 
   return (
     <div
+      className="codex-user-message"
       style={{ marginBottom: 16, display: "flex", flexDirection: "column", alignItems: "flex-end" }}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
       <div style={{ display: "flex", alignItems: "flex-end", gap: 6, maxWidth: "85%" }}>
         <div
+          className="codex-user-bubble"
           style={{
             flex: 1,
             minWidth: 0,
@@ -724,12 +726,15 @@ function AssistantMessageView({
 
   return (
     <div
+      className="codex-assistant-message"
       style={{ marginBottom: 16 }}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
       {/* Model label */}
       <div
+        className="codex-assistant-model-label"
+        data-streaming={isStreaming ? "true" : "false"}
         style={{
           fontSize: 11,
           color: "var(--text-dim)",
@@ -801,7 +806,7 @@ function AssistantMessageView({
         <TurnWrittenFiles files={writtenFiles} onOpenFile={onOpenFile} />
       )}
 
-      <div style={{
+      <div className="codex-assistant-meta" style={{
         display: "flex", alignItems: "center", gap: 8, marginTop: 4,
       }}>
         {message.usage && !isStreaming && (
@@ -905,6 +910,7 @@ function ThinkingBlock({ block, duration, sessionId, entryId, blockIndex }: {
 
   return (
     <div
+      className="codex-thinking-block"
       style={{
         border: "1px solid var(--border)",
         borderRadius: 6,
@@ -977,6 +983,8 @@ function ToolCallBlock({ block, result, duration, onOpenSession }: { block: Tool
 
   return (
     <div
+      className="codex-tool-call"
+      data-status={isError ? "error" : result ? "success" : "running"}
       style={{
         borderRadius: 7,
         overflow: "hidden",
@@ -986,7 +994,7 @@ function ToolCallBlock({ block, result, duration, onOpenSession }: { block: Tool
       }}
     >
       {/* ── Tool call header ── */}
-      <div style={{ display: "flex", alignItems: "stretch", minWidth: 0 }}>
+      <div className="codex-tool-call-header" style={{ display: "flex", alignItems: "stretch", minWidth: 0 }}>
         <button
           onClick={() => setExpanded((v) => !v)}
           style={{

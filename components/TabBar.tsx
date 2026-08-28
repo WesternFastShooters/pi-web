@@ -28,6 +28,7 @@ export function TabBar({ tabs, activeTabId, onSelectTab, onCloseTab }: Props) {
 
   return (
     <div
+      className="codex-tabbar"
       style={{
         display: "flex",
         alignItems: "flex-end",
@@ -41,6 +42,8 @@ export function TabBar({ tabs, activeTabId, onSelectTab, onCloseTab }: Props) {
         const isActive = tab.id === activeTabId;
         return (
           <div
+            className="codex-tab"
+            data-state={isActive ? "active" : "inactive"}
             key={tab.id}
             onClick={() => onSelectTab(tab.id)}
             onMouseDown={(e) => {

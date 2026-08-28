@@ -1399,6 +1399,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
 
   return (
     <div
+      className="codex-composer-shell"
       style={{
         flexShrink: 0,
         background: "transparent",
@@ -1906,6 +1907,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
             );
           })()}
           <div
+            className="codex-composer-surface"
             style={{
               minWidth: 0,
               display: "flex",
@@ -2023,6 +2025,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
             </div>
           ) : (
             <button
+              className="codex-send-button"
               onClick={handleSend}
               disabled={!value.trim() && !attachedImages.length}
               style={{
@@ -2046,7 +2049,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
                 <line x1="2" y1="7" x2="11" y2="7" />
                 <polyline points="7.5 3 12 7 7.5 11" />
               </svg>
-              {t("chat.send")}
+              <span>{t("chat.send")}</span>
             </button>
           )}
           </div>
