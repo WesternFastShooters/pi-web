@@ -29,3 +29,15 @@ test("the active viewer restores tab state and saves it with a revision", () => 
 test("closing the file panel pauses the active viewer watcher", () => {
   assert.match(fileContentBlock(), /watchEnabled=\{rightPanelOpen\}/);
 });
+
+test("renders the summary as a toolbar popover instead of the file side panel", () => {
+  assert.match(source, /const \[summaryOpen, setSummaryOpen\] = useState\(false\)/);
+  assert.match(source, /aria-controls="summary-panel"/);
+  assert.match(source, /className="codex-activity-overview codex-summary-popover"/);
+  assert.doesNotMatch(fileContentBlock(), /codex-activity-overview/);
+});
+
+test("keeps the file side panel closed until a file is opened", () => {
+  assert.match(source, /const \[rightPanelOpen, setRightPanelOpen\] = useState\(false\)/);
+  assert.match(source, /fileTabs\.length > 0 && renderMainFileToggle/);
+});

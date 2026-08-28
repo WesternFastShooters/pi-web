@@ -171,6 +171,8 @@ export const enLocale: LocalePlugin = {
     "activity.noneRunning": "No running processes",
     "activity.sources": "Sources",
     "activity.noSources": "No sources yet",
+    "activity.toggleSummary": "Toggle summary",
+    "activity.summary": "Summary",
     "sidebar.projects": "Projects",
     "sidebar.recent": "Recent",
     "terminal.title": "Terminal",

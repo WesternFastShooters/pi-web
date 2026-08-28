@@ -137,7 +137,8 @@ export function AppShell() {
   const [projectTrustBusy, setProjectTrustBusy] = useState(false);
   const [projectTrustError, setProjectTrustError] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [rightPanelOpen, setRightPanelOpen] = useState(true);
+  const [rightPanelOpen, setRightPanelOpen] = useState(false);
+  const [summaryOpen, setSummaryOpen] = useState(false);
   const [terminalOpen, setTerminalOpen] = useState(false);
   const [mobileToolbarMoreOpen, setMobileToolbarMoreOpen] = useState(false);
   const [mobileSidebarReady, setMobileSidebarReady] = useState(false);
@@ -211,6 +212,8 @@ export function AppShell() {
   const topBarRef = useRef<HTMLDivElement>(null);
   const mobileToolbarRef = useRef<HTMLDivElement>(null);
   const languageBtnRef = useRef<HTMLButtonElement>(null);
+  const summaryButtonRef = useRef<HTMLButtonElement>(null);
+  const summaryPanelRef = useRef<HTMLDivElement>(null);
 
   // Branch navigator state — populated by ChatWindow via onBranchDataChange
   const [branchTree, setBranchTree] = useState<SessionTreeNode[]>([]);
@@ -356,6 +359,25 @@ export function AppShell() {
     }
     setRightPanelOpen((open) => !open);
   }, [isMobile]);
+
+  useEffect(() => {
+    if (!summaryOpen) return;
+    const handlePointerDown = (event: PointerEvent) => {
+      const path = event.composedPath();
+      if (summaryPanelRef.current && path.includes(summaryPanelRef.current)) return;
+      if (summaryButtonRef.current && path.includes(summaryButtonRef.current)) return;
+      setSummaryOpen(false);
+    };
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setSummaryOpen(false);
+    };
+    document.addEventListener("pointerdown", handlePointerDown, true);
+    document.addEventListener("keydown", handleKeyDown, true);
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown, true);
+      document.removeEventListener("keydown", handleKeyDown, true);
+    };
+  }, [summaryOpen]);
 
   useEffect(() => {
     if (!mobileToolbarMoreOpen) return;
@@ -889,6 +911,7 @@ export function AppShell() {
       tabId,
     }));
     setActiveFileTabId(tabId);
+    setSummaryOpen(false);
     setRightPanelOpen(true);
     // On mobile the file panel is full-screen; close the drawer so it shows.
     if (isMobile) setSidebarOpen(false);
@@ -1641,6 +1664,48 @@ export function AppShell() {
     );
   };
 
+  const renderSummaryToggle = (mobile: boolean) => {
+    const covered = mobile && isNarrowMobile && mobileToolbarMoreOpen;
+    return (
+      <button
+      ref={summaryButtonRef}
+      type="button"
+      disabled={covered}
+      tabIndex={covered ? -1 : undefined}
+      aria-hidden={covered ? true : undefined}
+      onClick={() => {
+        if (mobile) {
+          setSidebarOpen(false);
+          setActiveTopPanel(null);
+          setMobileToolbarMoreOpen(false);
+        }
+        setSummaryOpen((open) => !open);
+      }}
+      aria-controls="summary-panel"
+      aria-expanded={summaryOpen}
+      title={translate("activity.toggleSummary")}
+      aria-label={translate("activity.toggleSummary")}
+      style={{
+        display: "flex", alignItems: "center", justifyContent: "center",
+        width: TOP_BAR_ICON_BUTTON_SIZE, height: TOP_BAR_ICON_BUTTON_SIZE, padding: 0,
+        background: summaryOpen ? "var(--bg-selected)" : "none",
+        border: "none", borderLeft: "1px solid var(--border)",
+        borderRadius: summaryOpen ? "var(--radius-md)" : 0,
+        color: summaryOpen ? "var(--text)" : "var(--text-muted)",
+        cursor: "pointer", flexShrink: 0, transition: "color 0.12s, background 0.12s",
+        visibility: covered ? "hidden" : undefined,
+        pointerEvents: covered ? "none" : undefined,
+      }}
+    >
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <line x1="8" y1="6" x2="20" y2="6"/><circle cx="4" cy="6" r="1"/>
+        <line x1="8" y1="12" x2="20" y2="12"/><circle cx="4" cy="12" r="1"/>
+        <line x1="8" y1="18" x2="20" y2="18"/><circle cx="4" cy="18" r="1"/>
+      </svg>
+      </button>
+    );
+  };
+
   const renderMainFileToggle = (mobile: boolean) => {
     const covered = mobile && isNarrowMobile && mobileToolbarMoreOpen;
     return (
@@ -1918,7 +1983,8 @@ export function AppShell() {
               {!isNarrowMobile && renderChatToolbarActions(true)}
               {renderSessionStatsButton(true)}
               {renderTerminalToggle()}
-              {renderMainFileToggle(true)}
+              {renderSummaryToggle(true)}
+              {fileTabs.length > 0 && renderMainFileToggle(true)}
               {isNarrowMobile && mobileToolbarMoreOpen && (
                 <div
                   id="mobile-toolbar-actions"
@@ -1954,7 +2020,8 @@ export function AppShell() {
             </div>
           )}
           {!isMobile && renderTerminalToggle()}
-          {!isMobile && renderMainFileToggle(false)}
+          {!isMobile && renderSummaryToggle(false)}
+          {!isMobile && fileTabs.length > 0 && renderMainFileToggle(false)}
           {isMobile && sessionHasBranches && (
             <BranchNavigator
               tree={branchTree}
@@ -2332,6 +2399,42 @@ export function AppShell() {
             )
           ) : null}
         </div>
+        {summaryOpen && (
+          <div
+            ref={summaryPanelRef}
+            id="summary-panel"
+            role="dialog"
+            aria-label={translate("activity.summary")}
+            className="codex-activity-overview codex-summary-popover"
+          >
+            <section>
+              <div className="codex-activity-heading">
+                <span>{translate("activity.outputs")}</span><span>＋</span>
+              </div>
+              <div className="codex-activity-empty">{translate("activity.createOutput")}</div>
+            </section>
+            <section>
+              <div className="codex-activity-heading"><span>{translate("activity.background")}</span></div>
+              {runningSessionIds.size > 0 ? (
+                <div className="codex-activity-row">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="m7 9 3 3-3 3M13 15h4"/></svg>
+                  <span>{translate("activity.running", { count: runningSessionIds.size })}</span>
+                </div>
+              ) : <div className="codex-activity-empty">{translate("activity.noneRunning")}</div>}
+            </section>
+            <section>
+              <div className="codex-activity-heading">
+                <span>{translate("activity.sources")}</span><span>＋</span>
+              </div>
+              {selectedSession?.cwd ? (
+                <div className="codex-activity-row">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path d="M3 7h6l2 2h10v10H3z"/><path d="M3 7V5h6l2 2"/></svg>
+                  <span title={selectedSession.cwd}>{selectedSession.cwd.split("/").filter(Boolean).pop()}</span>
+                </div>
+              ) : <div className="codex-activity-empty">{translate("activity.noSources")}</div>}
+            </section>
+          </div>
+        )}
       </div>
 
       <div
@@ -2428,33 +2531,8 @@ export function AppShell() {
               )}
             />
           ) : (
-            <div className="codex-activity-overview">
-              <section>
-                <div className="codex-activity-heading">
-                  <span>{translate("activity.outputs")}</span><span>＋</span>
-                </div>
-                <div className="codex-activity-empty">{translate("activity.createOutput")}</div>
-              </section>
-              <section>
-                <div className="codex-activity-heading"><span>{translate("activity.background")}</span></div>
-                {runningSessionIds.size > 0 ? (
-                  <div className="codex-activity-row">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="m7 9 3 3-3 3M13 15h4"/></svg>
-                    <span>{translate("activity.running", { count: runningSessionIds.size })}</span>
-                  </div>
-                ) : <div className="codex-activity-empty">{translate("activity.noneRunning")}</div>}
-              </section>
-              <section>
-                <div className="codex-activity-heading">
-                  <span>{translate("activity.sources")}</span><span>＋</span>
-                </div>
-                {selectedSession?.cwd ? (
-                  <div className="codex-activity-row">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path d="M3 7h6l2 2h10v10H3z"/><path d="M3 7V5h6l2 2"/></svg>
-                    <span title={selectedSession.cwd}>{selectedSession.cwd.split("/").filter(Boolean).pop()}</span>
-                  </div>
-                ) : <div className="codex-activity-empty">{translate("activity.noSources")}</div>}
-              </section>
+            <div style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-dim)", fontSize: 12 }}>
+              {translate("files.noneOpen")}
             </div>
           )}
         </div>

@@ -171,6 +171,8 @@ export const zhCNLocale: LocalePlugin = {
     "activity.noneRunning": "没有运行中的进程",
     "activity.sources": "来源",
     "activity.noSources": "暂无来源",
+    "activity.toggleSummary": "切换摘要",
+    "activity.summary": "摘要",
     "sidebar.projects": "项目",
     "sidebar.recent": "最近",
     "terminal.title": "终端",

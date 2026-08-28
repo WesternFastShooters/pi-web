@@ -171,6 +171,8 @@ export const zhTWLocale: LocalePlugin = {
     "activity.noneRunning": "沒有執行中的程序",
     "activity.sources": "來源",
     "activity.noSources": "暫無來源",
+    "activity.toggleSummary": "切換摘要",
+    "activity.summary": "摘要",
     "sidebar.projects": "專案",
     "sidebar.recent": "最近",
     "terminal.title": "終端機",
