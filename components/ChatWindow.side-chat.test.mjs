@@ -43,9 +43,8 @@ test("side chat owns a visible sender instead of an invisible terminal input", (
   assert.match(source, /className="codex-side-chat-sender"/);
   assert.match(source, /asBracketedPaste\(draft\)/);
   assert.match(source, /parseSideChatTranscript/);
-  assert.match(source, /\[─━-\]\{8,\}/);
   assert.match(source, /codex-side-chat-message-\$\{entry\.role\}/);
-  assert.match(source, /normalized\.slice\(2, -3\)/);
+  assert.match(source, /request\.transcriptEntries/);
 });
 
 test("hides the extension status footer below the primary sender", () => {

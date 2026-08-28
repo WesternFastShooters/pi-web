@@ -2,7 +2,8 @@
 import { registerAbortHandler } from "@/hooks/useKeyboardShortcuts";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { AgentMessage, AssistantContentBlock, AssistantMessage, BashExecutionMessage, BlockingExtensionUiRequest, CustomMessage, ExtensionUiRequest, SessionInfo, SessionTreeNode, ToolResultMessage, UserMessage } from "@/lib/types";
-import { normalizeCustomPanelLines, stripAnsi } from "@/lib/ansi";
+import { normalizeCustomPanelLines } from "@/lib/ansi";
+import { parseSideChatTranscript } from "@/lib/side-chat-transcript";
 import { asBracketedPaste, toTerminalKeyData } from "@/lib/terminal-input";
 import { countToolCallBlocks, getAssistantErrorMessage, getDisplayableAssistantBlocks, splitFinalAssistantBlocks } from "@/lib/message-display";
 import { extractTurnWrittenFiles, type WrittenFile } from "@/lib/turn-written-files";
@@ -1358,45 +1359,6 @@ function ExtensionDialog({
 
 type ExtensionCustomRequest = Extract<ExtensionUiRequest, { method: "custom" }>;
 
-type SideChatTranscriptEntry = {
-  role: "user" | "assistant" | "thinking" | "tool";
-  content: string;
-};
-
-export function parseSideChatTranscript(lines: string[]): SideChatTranscriptEntry[] {
-  const normalized = normalizeCustomPanelLines(lines);
-  const transcriptLines = normalized.length >= 5 ? normalized.slice(2, -3) : [];
-  const entries: SideChatTranscriptEntry[] = [];
-  let current: SideChatTranscriptEntry | null = null;
-
-  const flush = () => {
-    if (current?.content.trim()) entries.push({ ...current, content: current.content.trim() });
-    current = null;
-  };
-
-  for (const ansiLine of transcriptLines) {
-    const line = stripAnsi(ansiLine).trimEnd();
-    if (/^\s*[─━-]{8,}\s*$/.test(line)) {
-      flush();
-      continue;
-    }
-    const header = line.trimStart().match(/^(You|Assistant|Thinking|Tool)\b\s*(.*)$/);
-    if (header) {
-      flush();
-      const role = header[1] === "You"
-        ? "user"
-        : header[1].toLowerCase() as SideChatTranscriptEntry["role"];
-      current = { role, content: header[2].replace(/^▍\s*/, "") };
-      continue;
-    }
-    if (!current) continue;
-    const continuation = line.replace(/^\s{4}/, "");
-    current.content += `${current.content ? "\n" : ""}${continuation}`;
-  }
-  flush();
-  return entries;
-}
-
 export interface SideChatController {
   request: ExtensionCustomRequest;
   onInput: (request: ExtensionCustomRequest, data: string) => void;
@@ -1423,7 +1385,7 @@ export function ExtensionCustomPanel({
   const composingRef = useRef(false);
   const [draft, setDraft] = useState("");
   const displayLines = normalizeCustomPanelLines(request.lines);
-  const sideChatEntries = sideDock ? parseSideChatTranscript(request.lines) : [];
+  const sideChatEntries = sideDock ? parseSideChatTranscript(request.lines, request.transcriptEntries) : [];
 
   useEffect(() => {
     inputRef.current?.focus();

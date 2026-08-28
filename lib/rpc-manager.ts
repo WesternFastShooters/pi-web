@@ -1233,8 +1233,14 @@ export class AgentSessionWrapper {
 
   private emitCustomUiRender(id: string, custom: ActiveCustomUi): void {
     let lines: string[];
+    let transcriptEntries: unknown[] | undefined;
     try {
       lines = custom.component.render(custom.width);
+      const getTranscriptEntries = (custom.component as { getTranscriptEntries?: unknown }).getTranscriptEntries;
+      if (typeof getTranscriptEntries === "function") {
+        const value = getTranscriptEntries.call(custom.component) as unknown;
+        if (Array.isArray(value)) transcriptEntries = value;
+      }
     } catch (error) {
       lines = [`Extension custom UI render failed: ${error instanceof Error ? error.message : String(error)}`];
     }
@@ -1243,6 +1249,7 @@ export class AgentSessionWrapper {
       id,
       method: "custom",
       lines,
+      ...(transcriptEntries !== undefined ? { transcriptEntries } : {}),
     } as ExtensionUiRequest as AgentEvent;
     this.pendingUiRequests.set(id, event);
     this.emit(event);

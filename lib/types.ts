@@ -190,6 +190,7 @@ export type ExtensionUiRequest =
       id: string;
       method: "custom";
       lines: string[];
+      transcriptEntries?: unknown[];
       closed?: boolean;
     };
 
