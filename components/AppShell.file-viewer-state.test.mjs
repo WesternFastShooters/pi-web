@@ -44,6 +44,17 @@ test("keeps the side panel available before a file is opened", () => {
   assert.match(source, /className="codex-side-panel-home"/);
 });
 
+test("keeps only the side panel launchers in the empty side panel", () => {
+  const block = fileContentBlock();
+  assert.match(block, /className="codex-side-panel-launchers"/);
+  assert.match(block, /translate\("chat\.sideChat"\)/);
+  assert.match(block, /translate\("sidePanel\.browser"\)/);
+  assert.match(block, /translate\("terminal\.title"\)/);
+  assert.doesNotMatch(block, /codex-side-panel-recommendations/);
+  assert.doesNotMatch(block, /sidePanel\.recommended/);
+  assert.doesNotMatch(block, /127\.0\.0\.1:30141/);
+});
+
 test("renders independent desktop bottom and side panel controls", () => {
   const desktopToolbar = source.slice(
     source.indexOf("{!isMobile && renderSummaryToggle(false)}"),

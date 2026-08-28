@@ -165,7 +165,6 @@ export const zhCNLocale: LocalePlugin = {
     "files.showPanel": "显示文件面板",
     "files.noneOpen": "没有打开的文件",
     "sidePanel.browser": "浏览器",
-    "sidePanel.recommended": "推荐",
     "activity.outputs": "输出内容",
     "activity.createOutput": "创建文件或站点",
     "activity.background": "后台进程",

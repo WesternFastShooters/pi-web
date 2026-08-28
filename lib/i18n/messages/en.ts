@@ -165,7 +165,6 @@ export const enLocale: LocalePlugin = {
     "files.showPanel": "Show file panel",
     "files.noneOpen": "No file open",
     "sidePanel.browser": "Browser",
-    "sidePanel.recommended": "Recommended",
     "activity.outputs": "Output content",
     "activity.createOutput": "Create a file or site",
     "activity.background": "Background processes",

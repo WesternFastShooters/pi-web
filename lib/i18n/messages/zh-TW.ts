@@ -165,7 +165,6 @@ export const zhTWLocale: LocalePlugin = {
     "files.showPanel": "顯示檔案面板",
     "files.noneOpen": "沒有開啟的檔案",
     "sidePanel.browser": "瀏覽器",
-    "sidePanel.recommended": "推薦",
     "activity.outputs": "輸出內容",
     "activity.createOutput": "建立檔案或網站",
     "activity.background": "背景程序",

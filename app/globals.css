@@ -1836,8 +1836,7 @@ html.dark .codex-composer-surface {
   gap: 6px;
 }
 
-.codex-side-panel-launcher,
-.codex-side-panel-recommendations button {
+.codex-side-panel-launcher {
   display: grid;
   width: 100%;
   min-height: 42px;
@@ -1879,20 +1878,6 @@ html.dark .codex-composer-surface {
   color: var(--text-dim);
   font-family: var(--font-sans);
   font-size: 10px;
-}
-
-.codex-side-panel-recommendations {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding: 0 12px;
-  color: var(--text-dim);
-  font-size: 11px;
-}
-
-.codex-side-panel-recommendations button {
-  margin-inline: -12px;
-  background: transparent;
 }
 
 .codex-activity-overview {
