@@ -1396,6 +1396,77 @@ pre, code {
   max-width: 768px !important;
 }
 
+.codex-context-usage {
+  position: relative;
+  display: inline-flex;
+  width: 28px;
+  height: 32px;
+  flex: 0 0 28px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9px;
+  color: var(--text-muted);
+  cursor: help;
+  outline: none;
+}
+
+.codex-context-usage:hover,
+.codex-context-usage:focus,
+.codex-context-usage:focus-visible {
+  background: var(--bg-hover);
+  color: var(--text);
+}
+
+.codex-context-ring {
+  position: relative;
+  display: block;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: conic-gradient(currentColor var(--context-progress), var(--border-strong) 0);
+}
+
+.codex-context-ring::after {
+  position: absolute;
+  inset: 3px;
+  border-radius: 50%;
+  background: var(--bg);
+  content: "";
+}
+
+.codex-context-tooltip {
+  position: absolute;
+  bottom: calc(100% + 9px);
+  left: 50%;
+  z-index: 120;
+  display: none;
+  width: max-content;
+  max-width: 220px;
+  padding: 8px 12px;
+  transform: translateX(-50%);
+  border: 1px solid rgb(0 0 0 / 10%);
+  border-radius: 8px;
+  background: #f2f2f2;
+  box-shadow: 0 8px 24px rgb(0 0 0 / 22%);
+  color: #555;
+  font-size: 12px;
+  line-height: 1.45;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.codex-context-tooltip span,
+.codex-context-tooltip strong {
+  display: block;
+  font-weight: 500;
+}
+
+.codex-context-usage:hover .codex-context-tooltip,
+.codex-context-usage:focus .codex-context-tooltip,
+.codex-context-usage:focus-visible .codex-context-tooltip {
+  display: block;
+}
+
 .codex-composer-card {
   padding: 8px 10px 6px;
   border-radius: var(--radius-3xl);

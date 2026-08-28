@@ -29,6 +29,42 @@ test("does not render an empty model error", () => {
   assert.equal(renderToStaticMarkup(React.createElement(ModelErrorBanner, { error: null })), "");
 });
 
+test("renders Codex-style context usage in the composer footer", () => {
+  const html = renderToStaticMarkup(
+    React.createElement(
+      I18nProvider,
+      null,
+      React.createElement(ChatInput, {
+        onSend() {},
+        onAbort() {},
+        isStreaming: false,
+        contextUsage: { percent: 62.4, tokens: 161_000, contextWindow: 258_000 },
+      }),
+    ),
+  );
+
+  assert.match(html, /data-context-usage="true"/);
+  assert.match(html, /62% used/);
+  assert.match(html, /161k tokens used, 258k total/);
+});
+
+test("omits context usage when the model has no context window", () => {
+  const html = renderToStaticMarkup(
+    React.createElement(
+      I18nProvider,
+      null,
+      React.createElement(ChatInput, {
+        onSend() {},
+        onAbort() {},
+        isStreaming: false,
+        contextUsage: null,
+      }),
+    ),
+  );
+
+  assert.doesNotMatch(html, /data-context-usage="true"/);
+});
+
 test("renders enabledModels scope warnings", () => {
   const html = renderToStaticMarkup(
     React.createElement(ModelScopeWarningBanner, {

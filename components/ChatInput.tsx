@@ -27,6 +27,7 @@ import { useIsMobile } from "@/hooks/useIsMobile";
 import { useI18n } from "@/hooks/useI18n";
 import type { ToolPreset } from "@/lib/tool-presets";
 import { ModelSelector, type ModelSelectorOption } from "./ModelSelector";
+import type { ContextUsage } from "@/lib/pi-types";
 
 export { filterModelOptions } from "./ModelSelector";
 
@@ -77,6 +78,7 @@ interface Props {
   draftKey?: string;
   /** Session working directory — enables the @ file autocomplete menu */
   cwd?: string | null;
+  contextUsage?: ContextUsage | null;
 }
 
 export interface ChatInputHandle {
@@ -445,6 +447,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
   onPromptWithStreamingBehavior,
   draftKey,
   cwd,
+  contextUsage,
 }: Props, ref) {
   const { t } = useI18n();
   const isMobile = useIsMobile();
@@ -458,6 +461,12 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
   const trimmedValue = value.trimStart();
   const bashMode = attachedImages.length === 0 && trimmedValue.startsWith("!");
   const bashExcluded = bashMode && trimmedValue.startsWith("!!");
+  const contextPercent = contextUsage?.contextWindow && (contextUsage.percent !== null || contextUsage.tokens !== null)
+    ? Math.max(0, Math.min(100, contextUsage.percent ?? ((contextUsage.tokens ?? 0) / contextUsage.contextWindow * 100)))
+    : null;
+  const contextUsedTokens = contextUsage?.tokens ?? (contextPercent !== null && contextUsage
+    ? Math.round(contextUsage.contextWindow * contextPercent / 100)
+    : null);
   const [slashMenuOpen, setSlashMenuOpen] = useState(false);
   const [slashActiveIndex, setSlashActiveIndex] = useState(0);
   const [slashMenuMaxHeight, setSlashMenuMaxHeight] = useState<number | null>(null);
@@ -2101,6 +2110,26 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
                 <polyline points="21 15 16 10 5 21" />
               </svg>
             </button>
+            {contextUsage?.contextWindow && contextPercent !== null && contextUsedTokens !== null ? (
+              <div
+                className="codex-context-usage"
+                data-context-usage="true"
+                tabIndex={0}
+                role="img"
+                aria-label={`${t("chat.contextWindow")}: ${t("chat.contextPercentUsed", { percent: Math.round(contextPercent) })}. ${t("chat.contextTokensUsed", { used: formatTokenCount(contextUsedTokens), total: formatTokenCount(contextUsage.contextWindow) })}`}
+              >
+                <span
+                  className="codex-context-ring"
+                  style={{ "--context-progress": `${contextPercent * 3.6}deg` } as React.CSSProperties}
+                  aria-hidden="true"
+                />
+                <div className="codex-context-tooltip" role="tooltip">
+                  <span>{t("chat.contextWindow")}:</span>
+                  <strong>{t("chat.contextPercentUsed", { percent: Math.round(contextPercent) })}</strong>
+                  <span>{t("chat.contextTokensUsed", { used: formatTokenCount(contextUsedTokens), total: formatTokenCount(contextUsage.contextWindow) })}</span>
+                </div>
+              </div>
+            ) : null}
             {/* Model selector - visible always, disabled while the session or switch is busy */}
             {(modelOptions.length > 0 || model || modelError) && onModelChange && (
               <ModelSelector

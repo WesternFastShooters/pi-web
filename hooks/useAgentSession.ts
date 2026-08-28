@@ -252,7 +252,7 @@ export interface AttachedImage {
 }
 
 type SelectedModel = { provider: string; modelId: string };
-type ModelEntry = { id: string; name: string; provider: string };
+type ModelEntry = { id: string; name: string; provider: string; contextWindow?: number };
 type ModelsResponse = {
   models: Record<string, string>;
   modelList?: ModelEntry[];
@@ -393,6 +393,27 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
 
   const currentModel = currentModelOverride ?? data?.context.model ?? pendingModel ?? null;
   const displayModel = isNew ? (newSessionModel ?? newSessionDefaultModel) : currentModel;
+  const resolvedContextUsage = useMemo(() => {
+    if (contextUsage) return contextUsage;
+    if (!displayModel) return null;
+    const contextWindow = modelList.find((entry) => (
+      entry.id === displayModel.modelId && entry.provider === displayModel.provider
+    ))?.contextWindow;
+    if (!contextWindow) return null;
+    const latestUsageMessage = [...messages].reverse().find((message) => (
+      (message.role === "assistant" || message.role === "toolResult") && message.usage
+    ));
+    const latestUsage = latestUsageMessage && "usage" in latestUsageMessage
+      ? latestUsageMessage.usage
+      : undefined;
+    if (!latestUsage) return null;
+    const tokens = latestUsage.input + latestUsage.cacheRead + latestUsage.cacheWrite;
+    return {
+      contextWindow,
+      tokens,
+      percent: Math.min(100, tokens / contextWindow * 100),
+    };
+  }, [contextUsage, displayModel, messages, modelList]);
   const composerDraftKey = session?.id ?? newSessionDraftKey ?? undefined;
 
   const resolveComposerDraftKey = useCallback((key: string | undefined) => {
@@ -433,7 +454,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
       return {
         ...sessionStatsOverride,
         totalActiveMs: data?.totalActiveMs,
-        ...(contextUsage ? { contextUsage } : {}),
+        ...(resolvedContextUsage ? { contextUsage: resolvedContextUsage } : {}),
       };
     }
     const fileStats = data?.stats;
@@ -445,9 +466,9 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
       sessionName: session?.name,
       ...stats,
       totalActiveMs: data?.totalActiveMs,
-      ...(contextUsage ? { contextUsage } : {}),
+      ...(resolvedContextUsage ? { contextUsage: resolvedContextUsage } : {}),
     } satisfies SessionStatsInfo;
-  }, [messages, sessionStatsOverride, contextUsage, data?.context.messages, data?.filePath, data?.totalActiveMs, data?.stats, session?.id, session?.name]);
+  }, [messages, sessionStatsOverride, resolvedContextUsage, data?.context.messages, data?.filePath, data?.totalActiveMs, data?.stats, session?.id, session?.name]);
 
   const loadSession = useCallback(async (sid: string, showLoading = false, includeState = false) => {
     let messagesLoaded = false;
@@ -2006,7 +2027,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     // State
     data, loading, error, activeLeafId, messages, entryIds, historyCursor, hasEarlierMessages, streamState,
     agentRunning, modelNames, modelList, modelError, modelScopeWarnings, modelThinkingLevels, modelThinkingLevelMaps, newSessionModel, toolPreset, thinkingLevel,
-    retryInfo, contextUsage, systemPrompt, forkingEntryId,
+    retryInfo, contextUsage: resolvedContextUsage, systemPrompt, forkingEntryId,
     isCompacting, compactError, compactResult, currentModel, displayModel, modelSwitching, sessionStats,
     slashCommands, slashCommandsLoading, queuedMessages,
     notices: noticeState.visible, extensionDialog, extensionCustomUi, extensionStatuses, extensionWidgets, respondToExtensionUi, sendExtensionCustomInput,
