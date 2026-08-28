@@ -1076,6 +1076,19 @@ export function AppShell() {
         onOpenSettings={(section) => setSettingsSection(section)}
       />
       <div className="codex-sidebar-footer" style={{ padding: "8px", flexShrink: 0, display: "flex" }}>
+        <span
+          className="codex-sidebar-footer-divider"
+          aria-hidden="true"
+          style={{
+            position: "absolute",
+            top: 0,
+            left: -12,
+            right: -12,
+            display: "block",
+            borderTop: "1px solid var(--border-strong)",
+            pointerEvents: "none",
+          }}
+        />
         <button
           type="button"
           onClick={() => setSettingsSection(getLastSettingsSection(projectTrustCwd))}

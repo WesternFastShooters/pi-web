@@ -1591,13 +1591,13 @@ pre, code {
   border-top: 0;
 }
 
-.codex-sidebar-footer::before {
+.codex-sidebar-footer-divider {
   position: absolute;
   top: 0;
   left: -12px;
   right: -12px;
-  border-top: 0.5px solid var(--border);
-  content: "";
+  display: block;
+  border-top: 1px solid var(--border-strong);
   pointer-events: none;
 }
 

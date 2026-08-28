@@ -28,5 +28,6 @@ test("keeps the account hover pill inset and inside the sidebar layout", () => {
 });
 
 test("separates the account footer from the scrollable sidebar content", () => {
-  assert.match(globals, /\.codex-sidebar-footer::before \{[\s\S]*?left: -12px;[\s\S]*?right: -12px;[\s\S]*?border-top: 0\.5px solid var\(--border\);/);
+  assert.match(source, /className="codex-sidebar-footer-divider"/);
+  assert.match(globals, /\.codex-sidebar-footer-divider \{[\s\S]*?left: -12px;[\s\S]*?right: -12px;[\s\S]*?border-top: 1px solid var\(--border-strong\);/);
 });
